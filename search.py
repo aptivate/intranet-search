@@ -55,13 +55,13 @@ class SearchQuerySetWithAllFields(SearchQuerySet):
         return self.filter(**kwargs)
     
     def filter(self, **kwargs):
-        print "enter filter: old query = %s" % self.query
+        # print "enter filter: old query = %s" % self.query
         
         for param_name, param_value in kwargs.iteritems():
             dj = BaseSearchQuery()
         
             if param_name == 'content': 
-                print "fields = %s" % self.fields
+                # print "fields = %s" % self.fields
                 
                 for field_name, field_object in self.fields.iteritems():
                     if isinstance(field_object, CharField):
@@ -81,7 +81,7 @@ class SearchQuerySetWithAllFields(SearchQuerySet):
             else:
                 self.query.add_filter(SQ({param_name: param_value}))
         
-        print "exit filter: new query = %s" % self.query
+        # print "exit filter: new query = %s" % self.query
         return self
 
 class SelectMultipleWithJquery(SelectMultiple):
@@ -115,17 +115,17 @@ class SearchFormWithAllFields(ModelSearchForm):
         required=False)
     
     def __init__(self, *args, **kwargs):
+        # print "SearchFormWithAllFields %s initialised with %s, %s" % (
+        #     object.__str__(self), args, kwargs)
         if 'searchqueryset' not in kwargs:
             kwargs['searchqueryset'] = SearchQuerySetWithAllFields()
-        ModelSearchForm.__init__(self, *args, **kwargs)
-        # print "SearchFormWithAllFields initialised"
+        super(SearchFormWithAllFields, self).__init__(*args, **kwargs)
 
     def search(self):
-        print "search starting"
-        print "programs = %s" % self.cleaned_data.get("programs")
+        # print "search starting in %s" % object.__str__(self)
         
         if not self.is_valid():
-            print "invalid form"
+            # print "invalid form: %s, %s" % (self.is_bound, self.errors)
             return None
         
         kwargs = {}
@@ -140,7 +140,7 @@ class SearchFormWithAllFields(ModelSearchForm):
             kwargs['document_type'] = self.cleaned_data.get('document_types')
             
         if not kwargs:
-            print "no search"
+            # print "no search"
             return None
     
         sqs = self.searchqueryset.auto_query_custom(**kwargs)
@@ -150,6 +150,7 @@ class SearchFormWithAllFields(ModelSearchForm):
             
         self.count = sqs.count()
         
+        # print "search found %d results" % self.count
         return sqs.models(*self.get_models())
 
 from django.contrib.admin.views.main import ChangeList
@@ -166,7 +167,7 @@ class SearchTable(tables.Table):
     score = tables.Column(verbose_name="Score")
     
     def render_title(self, value, record):
-        print "record = %s (%s)" % (record, dir(record))
+        # print "record = %s (%s)" % (record, dir(record))
         return mark_safe("<a href='%s'>%s</a>" % (record.object.get_absolute_url(),
             value))
 
@@ -207,7 +208,12 @@ class SearchViewWithExtraFilters(SearchView):
             return super(SearchViewWithExtraFilters, self).create_response() 
 
     def extra_context(self):
-        sort_by = self.request.GET.get(self.prefix + self.sort_by_field)
+        sort_by = self.request.GET.get(self.prefix + self.sort_by_field,
+            'score')
+        
+        if sort_by == 'score':
+            sort_by = None # this is how haystack does sort by relevance?
+            
         results_table = SearchTable(self.form.searchqueryset,
             prefix=self.prefix, page_field=self.page_field, order_by=sort_by)
         current_page = self.request.GET.get(results_table.prefixed_page_field, 1)

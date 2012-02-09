@@ -158,6 +158,8 @@ class SearchList(ChangeList):
     def url_for_result(self, result):
         return result.object.get_absolute_url()
 
+from django.contrib.admin.views.main import EMPTY_CHANGELIST_VALUE
+
 class SearchTable(tables.Table):
     title = tables.Column(verbose_name="Title")
     authors = tables.Column(verbose_name="Authors")
@@ -172,6 +174,8 @@ class SearchTable(tables.Table):
             value))
 
     def render_authors(self, value):
+        if not value:
+            return EMPTY_CHANGELIST_VALUE
         users = IntranetUser.objects.in_bulk(value)
         return ', '.join([users[long(i)].full_name for i in value])
     
@@ -180,6 +184,8 @@ class SearchTable(tables.Table):
         return ', '.join([programs[long(i)].name for i in value])
     
     def render_document_type(self, value):
+        if not value:
+            return EMPTY_CHANGELIST_VALUE
         return DocumentType.objects.get(id=value).name
     
     class Meta:

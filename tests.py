@@ -22,6 +22,7 @@ class SearchTest(AptivateEnhancedTestCase):
         super(SearchTest, self).setUp()
         self.john = IntranetUser.objects.get(username='john')
         self.ringo = IntranetUser.objects.get(username='ringo')
+        self.login(self.john)
 
     def test_cannot_search_without_login(self):
         """
@@ -29,7 +30,7 @@ class SearchTest(AptivateEnhancedTestCase):
         from binder.monkeypatch import before, breakpoint
         before(HttpResponseRedirect, '__init__')(breakpoint)
         """
-        
+        self.client.logout()
         response = self.client.get(reverse('search'),
             {'id_models[]': 'binder.intranetuser'}, follow=True)
         self.assertTemplateUsed(response, 'admin/login.html',
@@ -37,7 +38,6 @@ class SearchTest(AptivateEnhancedTestCase):
             '%s' % response)
         
     def test_search_indexes_people(self):
-        self.login(self.john)
         response = self.client.get(reverse('search'), {'q': 'john'})
         table = response.context['results_table']
         self.assertIsInstance(table, SearchTable)
@@ -55,7 +55,6 @@ class SearchTest(AptivateEnhancedTestCase):
             args=[self.john.id]), result.object.get_absolute_url())
     
     def test_search_model_field_widget_uses_jquery(self):
-        self.login(self.john)
         response = self.client.get(reverse('search'))
         form = response.context['form']
         from search import SelectMultipleWithJquery
@@ -70,7 +69,6 @@ class SearchTest(AptivateEnhancedTestCase):
         list with names as hyperlinks to profile page and job title and
         logged in 'status' (separate story)
         """
-        self.login(self.john)
         response = self.client.get(reverse('search'),
             {'q': 'ringo', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
@@ -102,8 +100,15 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEquals("Yes", table.page.object_list.next()["logged_in"])
 
     def test_can_search_for_all_users(self):
-        self.login(self.john)
         response = self.client.get(reverse('search'),
             {'id_models[]': 'binder.intranetuser'})
         self.assertIn('results_table', response.context, response)
 
+    def test_can_find_people_by_program(self):
+        response = self.client.get(reverse('search'),
+            {'q': self.john.program.name})
+        table = response.context['results_table']
+        results = list(table.data.queryset)
+        self.assertEqual(1, len(results), "unexpected results in list: %s" %
+            results)
+        self.assertEqual(self.john, results[0].object)

@@ -129,7 +129,10 @@ class SearchFormWithAllFields(ModelSearchForm):
         
         super(SearchFormWithAllFields, self).__init__(*args, **kwargs)
         
+        # override the one created by the ModelSearchForm constructor
+        # to use a jquery drop-down box instead
         self.fields['models'].widget = SelectMultipleWithJquery(html_name='id_models[]')
+        self.fields['models'].widget.choices = self.fields['models'].choices
         
     def search(self):
         # print "search starting in %s" % object.__str__(self)

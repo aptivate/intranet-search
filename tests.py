@@ -42,3 +42,5 @@ class SearchTest(AptivateEnhancedTestCase):
         from search import SelectMultipleWithJquery
         self.assertIsInstance(form.fields['models'].widget,
             SelectMultipleWithJquery)
+        self.assertSequenceEqual(form.fields['models'].choices,
+            form.fields['models'].widget.choices)

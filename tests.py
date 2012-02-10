@@ -33,6 +33,7 @@ class SearchTest(AptivateEnhancedTestCase):
             results)
         result = results[0]
         self.assertEqual("binder.intranetuser.%s" % self.john.id, result.id)
+        self.assertEqual(self.john.full_name, result.title)
         self.assertEqual(reverse('admin:binder_intranetuser_readonly',
             args=[self.john.id]), result.object.get_absolute_url())
         

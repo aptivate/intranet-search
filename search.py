@@ -152,7 +152,7 @@ class SearchFormWithAllFields(ModelSearchForm):
         if self.cleaned_data.get('document_types'):
             kwargs['document_type'] = self.cleaned_data.get('document_types')
             
-        if not kwargs:
+        if not kwargs and not self.cleaned_data.get('models'):
             # print "no search"
             return None
     
@@ -163,8 +163,8 @@ class SearchFormWithAllFields(ModelSearchForm):
             
         self.count = sqs.count()
         
-        # print "search found %d results" % self.count
-        return sqs.models(*self.get_models())
+        sqs = sqs.models(*self.get_models())
+        return sqs
 
 from django.contrib.admin.views.main import ChangeList
 class SearchList(ChangeList):
@@ -203,6 +203,21 @@ class SearchTable(tables.Table):
     
     class Meta:
         attrs = {'class': 'paleblue'}
+
+class UserSearchTable(tables.Table):
+    title = tables.Column(verbose_name="Name")
+    job_title = tables.Column(verbose_name="Job Title")
+    logged_in = tables.Column(verbose_name="Logged In")
+
+    def render_title(self, value, record):
+        return mark_safe("<a href='%s'>%s</a>" % (record.object.get_absolute_url(),
+            value))
+        
+    def render_logged_in(self, record):
+        return "Yes" if record.object.is_logged_in() else "No"
+
+    class Meta:
+        attrs = {'class': 'paleblue'}
             
 class SearchViewWithExtraFilters(SearchView):
     prefix = 'results_'
@@ -232,9 +247,15 @@ class SearchViewWithExtraFilters(SearchView):
         
         if sort_by == 'score':
             sort_by = None # this is how haystack does sort by relevance?
-            
-        results_table = SearchTable(self.form.searchqueryset,
-            prefix=self.prefix, page_field=self.page_field, order_by=sort_by)
+        
+        models = self.form.cleaned_data['models']
+        if len(models) == 1 and models[0] == 'binder.intranetuser':
+            table_class = UserSearchTable
+        else:
+            table_class = SearchTable
+    
+        results_table = table_class(self.results, prefix=self.prefix,
+            page_field=self.page_field, order_by=sort_by)
         current_page = self.request.GET.get(results_table.prefixed_page_field, 1)
         results_table.paginate(page=current_page)
         

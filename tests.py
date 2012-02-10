@@ -22,6 +22,8 @@ class SearchTest(AptivateEnhancedTestCase):
         super(SearchTest, self).setUp()
         self.john = IntranetUser.objects.get(username='john')
         self.ringo = IntranetUser.objects.get(username='ringo')
+        self.ken = IntranetUser.objects.get(username='ken')
+        self.smith = IntranetUser.objects.get(username='smith')
         self.login(self.john)
 
     def test_cannot_search_without_login(self):
@@ -43,7 +45,7 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertIsInstance(table, SearchTable)
         queryset = table.data.queryset
         results = list(queryset)
-        self.assertEqual(1, len(results), "unexpected results in list: %s" %
+        self.assertEqual(2, len(results), "unexpected results in list: %s" %
             results)
         result = results[0]
         self.assertEqual("binder.intranetuser.%s" % self.john.id, result.id)
@@ -70,7 +72,7 @@ class SearchTest(AptivateEnhancedTestCase):
         logged in 'status' (separate story)
         """
         response = self.client.get(reverse('search'),
-            {'q': 'ringo', 'id_models[]': 'binder.intranetuser'})
+            {'q': 'john', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
         
         from search import UserSearchTable
@@ -78,7 +80,7 @@ class SearchTest(AptivateEnhancedTestCase):
         
         queryset = table.data.queryset
         results = list(queryset)
-        self.assertEqual(1, len(results), "unexpected results in list: %s" %
+        self.assertEqual(2, len(results), "unexpected results in list: %s" %
             results)
         
         columns = table.base_columns.items()
@@ -91,13 +93,13 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual('logged_in', columns[2][0])
         self.assertEqual('Logged In', columns[2][1].verbose_name)
         
-        self.assertEquals("No", table.page.object_list.next()["logged_in"])
+        self.assertEquals("Yes", table.page.object_list.next()["logged_in"])
 
         # john is logged in, so the column should show Yes instead of No
         response = self.client.get(reverse('search'),
-            {'q': 'john', 'id_models[]': 'binder.intranetuser'})
+            {'q': 'starr', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
-        self.assertEquals("Yes", table.page.object_list.next()["logged_in"])
+        self.assertEquals("No", table.page.object_list.next()["logged_in"])
 
     def test_can_search_for_all_users(self):
         response = self.client.get(reverse('search'),
@@ -106,9 +108,7 @@ class SearchTest(AptivateEnhancedTestCase):
 
     def test_can_find_people_by_program(self):
         response = self.client.get(reverse('search'),
-            {'q': self.john.program.name})
-        table = response.context['results_table']
-        results = list(table.data.queryset)
-        self.assertEqual(1, len(results), "unexpected results in list: %s" %
-            results)
-        self.assertEqual(self.john, results[0].object)
+            {'q': self.john.program.name}, follow=True)
+        # only one result, so should be redirected to readonly view page
+        self.assertSequenceEqual([(self.john.get_absolute_url(), 302)],
+            response.redirect_chain)

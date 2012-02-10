@@ -241,6 +241,11 @@ class SearchViewWithExtraFilters(SearchView):
         if self.results is None:
             return render_to_response(self.template, dict(form=self.form),
                 context_instance=self.context_class(self.request))
+        elif self.form.count == 1:
+            # If only one result, go straight to profile page
+            results = list(self.results)
+            from django.shortcuts import redirect
+            return redirect(results[0].object)
         else:
             return super(SearchViewWithExtraFilters, self).create_response() 
 

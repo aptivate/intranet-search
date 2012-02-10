@@ -112,3 +112,31 @@ class SearchTest(AptivateEnhancedTestCase):
         # only one result, so should be redirected to readonly view page
         self.assertSequenceEqual([(self.john.get_absolute_url(), 302)],
             response.redirect_chain)
+
+    def test_search_form_has_a_users_only_checkbox(self):
+        response = self.client.get(reverse('search'),
+            {'q': 'john'}, follow=True)
+        form = response.context['search']['form']
+        field = form.fields['models']
+        from django.forms import fields
+        self.assertIsInstance(field, fields.MultipleChoiceField)
+        from search import CheckboxesWithCustomHtmlName
+        self.assertIsInstance(field.widget, CheckboxesWithCustomHtmlName)
+        self.assertEqual('id_models[]', field.widget.html_name)
+        
+        response = self.client.get(reverse('search'),
+            {'q': 'john', 'id_models[]': 'binder.intranetuser'})
+
+        table = response.context['results_table']
+        queryset = table.data.queryset
+        self.assertItemsEqual((IntranetUser,), queryset.query.models)
+        
+        # check that the correct models are selected too
+        quick_search_form = response.context['search']['form']
+        self.assertTrue(quick_search_form.is_valid())
+        self.assertItemsEqual(('binder.intranetuser',), 
+            quick_search_form.cleaned_data.get('models'))
+        
+        advanced_search_form = response.context['form']
+        self.assertItemsEqual(('binder.intranetuser',), 
+            advanced_search_form.cleaned_data.get('models'))

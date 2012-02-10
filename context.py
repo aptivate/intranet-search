@@ -5,6 +5,6 @@ import search
 def additions(request):
     return {
         'search': {
-            'form': search.SearchFormWithAllFields(request.GET),
+            'form': search.QuickSearchForm(request.GET),
         },
     }

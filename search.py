@@ -2,7 +2,7 @@ from django.contrib.admin.templatetags import admin_list
  
 from django import forms
 from django.db import models as fields
-from django.forms.widgets import SelectMultiple
+from django.forms import widgets
 from django.shortcuts import render_to_response
 from django.utils.safestring import mark_safe
 
@@ -83,10 +83,34 @@ class SearchQuerySetWithAllFields(SearchQuerySet):
         
         # print "exit filter: new query = %s" % self.query
         return self
-
-class SelectMultipleWithJquery(SelectMultiple):
+    
+class CheckboxesWithCustomHtmlName(widgets.CheckboxSelectMultiple):
     def __init__(self, attrs=None, choices=(), html_name=None):
-        SelectMultiple.__init__(self, attrs=attrs, choices=choices)
+        super(CheckboxesWithCustomHtmlName, self).__init__(attrs=attrs,
+            choices=choices)
+        self.html_name = html_name
+        
+    def render(self, name, value, attrs=None, choices=()):
+        if self.html_name:
+            name = self.html_name
+
+        return super(CheckboxesWithCustomHtmlName, self).render(name, value,
+            attrs, choices)
+
+    def value_from_datadict(self, data, files, name):
+        if self.html_name:
+            name = self.html_name
+
+        v = super(CheckboxesWithCustomHtmlName, self).value_from_datadict(data,
+            files, name)
+        # print "SelectMultiple.value_from_datadict(%s, %s, %s, %s) = %s" % (
+        #     self, data, files, name, v)
+        return v
+
+class SelectMultipleWithJquery(widgets.SelectMultiple):
+    def __init__(self, attrs=None, choices=(), html_name=None):
+        super(SelectMultipleWithJquery, self).__init__(attrs=attrs,
+            choices=choices)
         self.html_name = html_name
         
     def render(self, name, value, attrs=None, choices=()):
@@ -99,14 +123,15 @@ class SelectMultipleWithJquery(SelectMultiple):
         html_attrs = {'class': 'multiselect-jquery'}
         html_attrs.update(attrs)
 
-        return SelectMultiple.render(self, name, value, attrs=html_attrs,
-            choices=choices)
+        return super(SelectMultipleWithJquery, self).render(name, value,
+            attrs=html_attrs, choices=choices)
 
     def value_from_datadict(self, data, files, name):
         if self.html_name:
             name = self.html_name
 
-        v = SelectMultiple.value_from_datadict(self, data, files, name)
+        v = super(SelectMultipleWithJquery, self).value_from_datadict(data,
+            files, name)
         # print "SelectMultiple.value_from_datadict(%s, %s, %s, %s) = %s" % (
         #     self, data, files, name, v)
         return v
@@ -116,6 +141,7 @@ class SearchFormWithAllFields(ModelSearchForm):
         choices=[(p.id, p.name) for p in Program.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_programs[]'), 
         required=False)
+
     document_types = forms.MultipleChoiceField(
         choices=[(t.id, t.name) for t in DocumentType.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_document_types[]'), 
@@ -128,11 +154,6 @@ class SearchFormWithAllFields(ModelSearchForm):
             kwargs['searchqueryset'] = SearchQuerySetWithAllFields()
         
         super(SearchFormWithAllFields, self).__init__(*args, **kwargs)
-        
-        # override the one created by the ModelSearchForm constructor
-        # to use a jquery drop-down box instead
-        self.fields['models'].widget = SelectMultipleWithJquery(html_name='id_models[]')
-        self.fields['models'].widget.choices = self.fields['models'].choices
         
     def search(self):
         # print "search starting in %s" % object.__str__(self)
@@ -163,8 +184,38 @@ class SearchFormWithAllFields(ModelSearchForm):
             
         self.count = sqs.count()
         
-        sqs = sqs.models(*self.get_models())
+        if self.cleaned_data.get('people_only'):
+            sqs = sqs.models(IntranetUser)
+        else:
+            sqs = sqs.models(*self.get_models())
+        
         return sqs
+
+class QuickSearchForm(SearchFormWithAllFields):
+    def __init__(self, *args, **kwargs):
+        super(QuickSearchForm, self).__init__(*args, **kwargs)
+        
+        # reduce set of choices
+        self.fields['models'].widget = \
+            CheckboxesWithCustomHtmlName(html_name='id_models[]')
+        from django.utils.text import capfirst
+        from haystack.constants import DEFAULT_ALIAS
+        using = DEFAULT_ALIAS
+        choices = [("%s.%s" % (m._meta.app_label, m._meta.module_name),
+            capfirst(unicode(m._meta.verbose_name_plural)))
+            for m in connections[using].get_unified_index().get_indexed_models()
+            if m == IntranetUser]
+        self.fields['models'].choices = sorted(choices, key=lambda x: x[1])
+
+class SearchFormWithJqueryLists(SearchFormWithAllFields):
+    def __init__(self, *args, **kwargs):
+        super(SearchFormWithJqueryLists, self).__init__(*args, **kwargs)
+        
+        # override the one created by the ModelSearchForm constructor
+        # to use a jquery drop-down box instead
+        self.fields['models'].widget = \
+            SelectMultipleWithJquery(html_name='id_models[]')
+        self.fields['models'].widget.choices = self.fields['models'].choices
 
 from django.contrib.admin.views.main import ChangeList
 class SearchList(ChangeList):
@@ -230,7 +281,7 @@ class SearchViewWithExtraFilters(SearchView):
     from django.template import RequestContext
     
     def __init__(self, template=None, load_all=True, 
-        form_class=SearchFormWithAllFields,
+        form_class=SearchFormWithJqueryLists,
         searchqueryset=None, context_class=RequestContext,
         results_per_page=None):
         

@@ -93,7 +93,14 @@ class SelectMultipleWithJquery(SelectMultiple):
         if self.html_name:
             name = self.html_name
 
-        return SelectMultiple.render(self, name, value, attrs=attrs, choices=choices)
+        if attrs is None:
+            attrs = {}
+        
+        html_attrs = {'class': 'multiselect-jquery'}
+        html_attrs.update(attrs)
+
+        return SelectMultiple.render(self, name, value, attrs=html_attrs,
+            choices=choices)
 
     def value_from_datadict(self, data, files, name):
         if self.html_name:
@@ -119,8 +126,11 @@ class SearchFormWithAllFields(ModelSearchForm):
         #     object.__str__(self), args, kwargs)
         if 'searchqueryset' not in kwargs:
             kwargs['searchqueryset'] = SearchQuerySetWithAllFields()
+        
         super(SearchFormWithAllFields, self).__init__(*args, **kwargs)
-
+        
+        self.fields['models'].widget = SelectMultipleWithJquery(html_name='id_models[]')
+        
     def search(self):
         # print "search starting in %s" % object.__str__(self)
         

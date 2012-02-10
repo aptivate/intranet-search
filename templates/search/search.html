@@ -10,8 +10,7 @@
 		jQuery(document).ready(function()
 		{
 			opts = { selectAll: false, selectNone: true };
-			$("#id_programs").multiSelect(opts);
-			$("#id_document_types").multiSelect(opts);
+			$(".multiselect-jquery").multiSelect(opts);
 		});
 	</script>
 {% endblock %}
@@ -28,12 +27,14 @@
 	<form method="get" action=".">
 		<table class="search-options ruled">
 			<tr>
+				<th>Types</th>
 				<th>Containing Text</th>
 				<th>Programs</th>
 				<th>Document Types</th>
 				<th></th>
 			</tr>
 			<tr>
+				<td class="search-types">{{ form.models }}</td>
 				<td>{{ form.q }}</td>
 				<td class="search-programs">{{ form.programs }}</td>
 				<td class="search-doctypes">{{ form.document_types }}</td>

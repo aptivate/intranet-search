@@ -13,8 +13,7 @@ import settings
 
 from binder.test_utils import AptivateEnhancedTestCase
 from binder.models import IntranetUser
-from search import SearchViewWithExtraFilters
-from intranet.search.search import SearchTable
+from search import SearchViewWithExtraFilters, SearchTable
 
 class SearchTest(AptivateEnhancedTestCase):
     fixtures = ['test_permissions', 'test_users']
@@ -36,4 +35,10 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual(self.john.full_name, result.title)
         self.assertEqual(reverse('admin:binder_intranetuser_readonly',
             args=[self.john.id]), result.object.get_absolute_url())
-        
+    
+    def test_search_model_field_widget_uses_jquery(self):
+        response = self.client.get(reverse('search'))
+        form = response.context['form']
+        from search import SelectMultipleWithJquery
+        self.assertIsInstance(form.fields['models'].widget,
+            SelectMultipleWithJquery)

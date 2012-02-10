@@ -218,7 +218,10 @@ class UserSearchTable(tables.Table):
 
     class Meta:
         attrs = {'class': 'paleblue'}
-            
+
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+
 class SearchViewWithExtraFilters(SearchView):
     prefix = 'results_'
     page_field = 'page'
@@ -267,3 +270,6 @@ class SearchViewWithExtraFilters(SearchView):
             'request': self.request,
             # 'result_headers': list(admin_list.result_headers(self)),
         }
+
+    # https://docs.djangoproject.com/en/dev/topics/class-based-views/
+    __call__ = method_decorator(login_required)(SearchView.__call__)

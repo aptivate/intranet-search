@@ -23,7 +23,21 @@ class SearchTest(AptivateEnhancedTestCase):
         self.john = IntranetUser.objects.get(username='john')
         self.ringo = IntranetUser.objects.get(username='ringo')
 
+    def test_cannot_search_without_login(self):
+        """
+        from django.http import HttpResponseRedirect
+        from binder.monkeypatch import before, breakpoint
+        before(HttpResponseRedirect, '__init__')(breakpoint)
+        """
+        
+        response = self.client.get(reverse('search'),
+            {'id_models[]': 'binder.intranetuser'}, follow=True)
+        self.assertTemplateUsed(response, 'admin/login.html',
+            'anonymous users should be required to log in before searching: ' +
+            '%s' % response)
+        
     def test_search_indexes_people(self):
+        self.login(self.john)
         response = self.client.get(reverse('search'), {'q': 'john'})
         table = response.context['results_table']
         self.assertIsInstance(table, SearchTable)
@@ -41,6 +55,7 @@ class SearchTest(AptivateEnhancedTestCase):
             args=[self.john.id]), result.object.get_absolute_url())
     
     def test_search_model_field_widget_uses_jquery(self):
+        self.login(self.john)
         response = self.client.get(reverse('search'))
         form = response.context['form']
         from search import SelectMultipleWithJquery
@@ -55,8 +70,9 @@ class SearchTest(AptivateEnhancedTestCase):
         list with names as hyperlinks to profile page and job title and
         logged in 'status' (separate story)
         """
+        self.login(self.john)
         response = self.client.get(reverse('search'),
-            {'q': 'john', 'id_models[]': 'binder.intranetuser'})
+            {'q': 'ringo', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
         
         from search import UserSearchTable
@@ -79,17 +95,15 @@ class SearchTest(AptivateEnhancedTestCase):
         
         self.assertEquals("No", table.page.object_list.next()["logged_in"])
 
-        # Login, check that column value changes        
-        self.assertTrue(self.client.login(username=self.john.username,
-            password='johnpassword'), "Login failed")
-
+        # john is logged in, so the column should show Yes instead of No
         response = self.client.get(reverse('search'),
             {'q': 'john', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
         self.assertEquals("Yes", table.page.object_list.next()["logged_in"])
 
     def test_can_search_for_all_users(self):
+        self.login(self.john)
         response = self.client.get(reverse('search'),
             {'id_models[]': 'binder.intranetuser'})
-        self.assertIn('results_table', response.context)
-        
+        self.assertIn('results_table', response.context, response)
+

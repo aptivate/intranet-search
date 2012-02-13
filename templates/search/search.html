@@ -35,7 +35,13 @@
 			</tr>
 			<tr>
 				<td class="search-types">{{ form.models }}</td>
-				<td>{{ form.q }}</td>
+				<td>
+					{{ form.q }}
+					<div class="search-suggestion">
+						<span class="prompt">Did you mean:</span>
+						<span class="correction">{{ suggestion }}</span>
+					</div>
+				</td>
 				<td class="search-programs">{{ form.programs }}</td>
 				<td class="search-doctypes">{{ form.document_types }}</td>
 				<td><input type="submit" value="Search" /></td>

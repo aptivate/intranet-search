@@ -178,17 +178,12 @@ class SearchFormWithAllFields(ModelSearchForm):
             return None
     
         sqs = self.searchqueryset.auto_query_custom(**kwargs)
+        sqs = sqs.models(*self.get_models())
         
+        self.count = sqs.count()
         if self.load_all:
             sqs = sqs.load_all()
             
-        self.count = sqs.count()
-        
-        if self.cleaned_data.get('people_only'):
-            sqs = sqs.models(IntranetUser)
-        else:
-            sqs = sqs.models(*self.get_models())
-        
         return sqs
 
 class QuickSearchForm(SearchFormWithAllFields):
@@ -318,7 +313,7 @@ class SearchViewWithExtraFilters(SearchView):
         current_page = self.request.GET.get(results_table.prefixed_page_field, 1)
         results_table.paginate(page=current_page)
         
-        return {
+        context = {
             'is_real_search': (self.form.is_valid() and
                 len(self.form.cleaned_data) > 0),
             'count': getattr(self.form, 'count', None),
@@ -326,6 +321,16 @@ class SearchViewWithExtraFilters(SearchView):
             'request': self.request,
             # 'result_headers': list(admin_list.result_headers(self)),
         }
+
+        # create_response only does this if there are results for some reason!
+        # here we do it only for the case where there are NO results, so it
+        # will always be done once, whether or not there are results.   
+        # import pdb; pdb.set_trace()     
+        if not self.results and hasattr(self.results, 'query') and \
+        self.results.query.backend.include_spelling:
+            context['suggestion'] = self.form.get_suggestion()
+
+        return context
 
     # https://docs.djangoproject.com/en/dev/topics/class-based-views/
     __call__ = method_decorator(login_required)(SearchView.__call__)

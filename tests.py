@@ -140,3 +140,31 @@ class SearchTest(AptivateEnhancedTestCase):
         advanced_search_form = response.context['form']
         self.assertItemsEqual(('binder.intranetuser',), 
             advanced_search_form.cleaned_data.get('models'))
+
+    def test_spelling_suggestions(self):
+        """
+        This test relies on the monkeypatch to change the minimum
+        n-gram size of the SpellingChecker to 2, otherwise it won't
+        find any matches.
+        """
+        
+        response = self.client.get(reverse('search'),
+            {'q': 'rnigo'}, follow=True)
+        self.assertEqual('ringo', response.context['suggestion'])
+
+        # check that stemming is not done on words ending in "er"
+        response = self.client.get(reverse('search'),
+            {'q': 'shearre'}, follow=True)
+        self.assertEqual('shearer', response.context['suggestion'])
+
+        # check that the job title field is indexed, and stemming is not
+        # done on words ending in "er" for spelling queries
+        # from binder.monkeypatch import before, breakpoint
+        # from whoosh_backend import CustomWhooshBackend
+        # before(CustomWhooshBackend, 'create_spelling_suggestion')(breakpoint)
+        
+        response = self.client.get(reverse('search'),
+            {'q': 'songwritr'}, follow=True)
+        self.assertIn('suggestion', response.context,
+            'unexpected response: %s' % response)
+        self.assertEqual('songwriter', response.context['suggestion'])

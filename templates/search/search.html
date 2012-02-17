@@ -1,10 +1,10 @@
 {% extends 'default_layout.dhtml' %}
 
 {% block extrastyle %}
-	<script type="text/javascript" src="/static/js/jquery-1.7.1.js"></script>
-	<script type="text/javascript" src="/static/js/jquery.multiSelect.js"></script>
-	<script type="text/javascript" src="/static/js/jquery.bgiframe.min.js"></script>
-	<link rel="stylesheet" href="/static/js/jquery.multiSelect.css" />
+	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery-1.7.1.js"></script>
+	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.multiSelect.js"></script>
+	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.bgiframe.min.js"></script>
+	<link rel="stylesheet" href="{{ STATIC_URL }}binder/js/jquery.multiSelect.css" />
 	<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css" />
 	<script type="text/javascript">
 		jQuery(document).ready(function()
@@ -24,7 +24,7 @@
 {% endblock %}
 
 {% block body %}
-	<form method="get" action=".">
+	<form name="search" method="get" action=".">
 		<table class="search-options ruled">
 			<tr>
 				<th>Types</th>
@@ -37,16 +37,33 @@
 				<td class="search-types">{{ form.models }}</td>
 				<td>
 					{{ form.q }}
-					<div class="search-suggestion">
-						<span class="prompt">Did you mean:</span>
-						<span class="correction">{{ suggestion }}</span>
-					</div>
 				</td>
 				<td class="search-programs">{{ form.programs }}</td>
 				<td class="search-doctypes">{{ form.document_types }}</td>
 				<td><input type="submit" value="Search" /></td>
 			</tr>
 		</table>
+		
+		{% if suggestform %}
+			{{ suggestform.suggestion }}			
+			<script type="text/javascript">
+			function correct()
+			{
+				var form = document.forms.search;
+				form.q.value = form.suggestion.value;
+				form.submit();
+				return false;
+			}
+			</script>
+			<div class="warning-message search-suggestion">
+				<span class="prompt">
+					Did you mean
+					<a class="correction" href="#" 
+						onclick="return correct();">{{ suggestform.suggestion.value }}</a>
+					?
+				</span>
+			</div>
+		{% endif %}			
 
 		{% if is_real_search %}
 			<h3>Results</h3>

@@ -268,6 +268,10 @@ class UserSearchTable(tables.Table):
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 
+class SuggestionForm(forms.Form):
+    suggestion = forms.CharField(widget=widgets.HiddenInput,
+        required=False)
+
 class SearchViewWithExtraFilters(SearchView):
     prefix = 'results_'
     page_field = 'page'
@@ -322,14 +326,8 @@ class SearchViewWithExtraFilters(SearchView):
             # 'result_headers': list(admin_list.result_headers(self)),
         }
 
-        # create_response only does this if there are results for some reason!
-        # here we do it only for the case where there are NO results, so it
-        # will always be done once, whether or not there are results.   
-        # import pdb; pdb.set_trace()     
-        if not self.results and hasattr(self.results, 'query') and \
-        self.results.query.backend.include_spelling:
-            context['suggestion'] = self.form.get_suggestion()
-
+        context['suggestform'] = SuggestionForm(data={'suggestion': self.form.get_suggestion()})
+        
         return context
 
     # https://docs.djangoproject.com/en/dev/topics/class-based-views/

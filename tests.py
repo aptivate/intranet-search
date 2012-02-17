@@ -6,6 +6,7 @@ Replace this with more appropriate tests for your application.
 """
 
 from django.core.urlresolvers import reverse
+from django.forms import widgets
 from django.test import TestCase
 from django.template import Context
 
@@ -13,7 +14,7 @@ import settings
 
 from binder.test_utils import AptivateEnhancedTestCase
 from binder.models import IntranetUser
-from search import SearchViewWithExtraFilters, SearchTable
+from search import SearchViewWithExtraFilters, SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):
     fixtures = ['test_permissions', 'test_users']
@@ -150,12 +151,17 @@ class SearchTest(AptivateEnhancedTestCase):
         
         response = self.client.get(reverse('search'),
             {'q': 'rnigo'}, follow=True)
-        self.assertEqual('ringo', response.context['suggestion'])
+        sf = response.context['suggestform']
+        self.assertIsInstance(sf, SuggestionForm)
+        self.assertEqual('ringo', sf['suggestion'].value())
+        self.assertIsInstance(sf['suggestion'].field.widget,
+            widgets.HiddenInput)
 
         # check that stemming is not done on words ending in "er"
         response = self.client.get(reverse('search'),
             {'q': 'shearre'}, follow=True)
-        self.assertEqual('shearer', response.context['suggestion'])
+        self.assertEqual('shearer', 
+            response.context['suggestform']['suggestion'].value())
 
         # check that the job title field is indexed, and stemming is not
         # done on words ending in "er" for spelling queries
@@ -167,4 +173,22 @@ class SearchTest(AptivateEnhancedTestCase):
             {'q': 'songwritr'}, follow=True)
         self.assertIn('suggestion', response.context,
             'unexpected response: %s' % response)
-        self.assertEqual('songwriter', response.context['suggestion'])
+        self.assertEqual('songwriter', 
+            response.context['suggestform']['suggestion'].value())
+
+    def test_notes_field_for_user(self):
+        from haystack import connections
+        from haystack.constants import DEFAULT_ALIAS
+        unified = connections[DEFAULT_ALIAS].get_unified_index()
+        index = unified.get_index(IntranetUser)
+        
+        from haystack.fields import CharField
+        self.assertIsInstance(index.fields['notes'], CharField)
+        self.assertEqual('notes', index.fields['notes'].model_attr)
+        
+        response = self.client.get(reverse('search'),
+            {'q': "Yoko"}, follow=True)
+        # only one result, so should be redirected to readonly view page
+        self.assertSequenceEqual([(self.john.get_absolute_url(), 302)],
+            response.redirect_chain)
+        

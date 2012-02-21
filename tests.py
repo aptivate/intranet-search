@@ -5,16 +5,13 @@ when you run "manage.py test".
 Replace this with more appropriate tests for your application.
 """
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.core.urlresolvers import reverse
 from django.forms import widgets
-from django.test import TestCase
-from django.template import Context
-
-import settings
 
 from binder.test_utils import AptivateEnhancedTestCase
 from binder.models import IntranetUser
-from search import SearchViewWithExtraFilters, SearchTable, SuggestionForm
+from search import SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):
     fixtures = ['test_permissions', 'test_users']
@@ -111,8 +108,9 @@ class SearchTest(AptivateEnhancedTestCase):
         response = self.client.get(reverse('search'),
             {'q': self.john.program.name}, follow=True)
         # only one result, so should be redirected to readonly view page
-        self.assertSequenceEqual([(self.john.get_absolute_url(), 302)],
-            response.redirect_chain)
+        self.assertIsInstance(response.real_request, WSGIRequest)
+        url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
+        self.assertSequenceEqual([(url, 302)], response.redirect_chain)
 
     def test_search_form_has_a_users_only_checkbox(self):
         response = self.client.get(reverse('search'),
@@ -188,7 +186,9 @@ class SearchTest(AptivateEnhancedTestCase):
         
         response = self.client.get(reverse('search'),
             {'q': "Yoko"}, follow=True)
+
         # only one result, so should be redirected to readonly view page
-        self.assertSequenceEqual([(self.john.get_absolute_url(), 302)],
-            response.redirect_chain)
+        self.assertIsInstance(response.real_request, WSGIRequest)
+        url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
+        self.assertSequenceEqual([(url, 302)], response.redirect_chain)
         

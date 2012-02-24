@@ -9,8 +9,11 @@ from django.core.handlers.wsgi import WSGIRequest
 from django.core.urlresolvers import reverse
 from django.forms import widgets
 
+from haystack import connections
+from haystack.constants import DEFAULT_ALIAS
+
 from binder.test_utils import AptivateEnhancedTestCase
-from binder.models import IntranetUser
+from binder.models import IntranetUser, ProgramType
 from search import SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):
@@ -175,8 +178,6 @@ class SearchTest(AptivateEnhancedTestCase):
             response.context['suggestform']['suggestion'].value())
 
     def test_notes_field_for_user(self):
-        from haystack import connections
-        from haystack.constants import DEFAULT_ALIAS
         unified = connections[DEFAULT_ALIAS].get_unified_index()
         index = unified.get_index(IntranetUser)
         
@@ -191,4 +192,23 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertIsInstance(response.real_request, WSGIRequest)
         url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
         self.assertSequenceEqual([(url, 302)], response.redirect_chain)
+        
+    def test_update_document_removes_old_from_spelling(self):
+        unified = connections[DEFAULT_ALIAS].get_unified_index()
+        index = unified.get_index(IntranetUser)
+        backend = index._get_backend(DEFAULT_ALIAS)
+        
+        from whoosh_backend import CustomWhooshBackend
+        self.assertIsInstance(backend, CustomWhooshBackend)
+
+        self.assertEqual('kenneth', backend.create_spelling_suggestion('Kenneth'))
+        self.assertEqual('starr', # not "barbie"!
+            backend.create_spelling_suggestion('Barbie'))
+
+        self.ken.full_name = "Barbie"
+        self.ken.save()
+        
+        self.assertEqual('lennon', # not "kenneth"!
+            backend.create_spelling_suggestion('Kenneth'))
+        self.assertEqual('barbie', backend.create_spelling_suggestion('Barbie'))
         

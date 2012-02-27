@@ -211,7 +211,9 @@ class WriterWithFasterSpellingUpdate(AsyncWriter):
                     yield w
             """
 
-            words = [w for w, freq, weight, valuestring in field.index(doc[fieldname])]
+            words = [w for w, freq, weight, valuestring 
+                in field.index(doc[fieldname])
+                if fieldname in doc]
             
             self.spelling_checker.add_words(words)
 

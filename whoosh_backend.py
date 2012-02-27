@@ -211,11 +211,11 @@ class WriterWithFasterSpellingUpdate(AsyncWriter):
                     yield w
             """
 
-            words = [w for w, freq, weight, valuestring 
-                in field.index(doc[fieldname])
-                if fieldname in doc]
-            
-            self.spelling_checker.add_words(words)
+            if fieldname in doc:
+                words = [w for w, freq, weight, valuestring 
+                    in field.index(doc[fieldname])]
+                
+                self.spelling_checker.add_words(words)
 
 class CustomWhooshBackend(original_backend.WhooshSearchBackend):
     silently_fail = False

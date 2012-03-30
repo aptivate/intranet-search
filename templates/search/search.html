@@ -9,10 +9,19 @@
 	<script type="text/javascript">
 		jQuery(document).ready(function()
 		{
-			opts = { selectAll: false, selectNone: true };
-			$(".multiselect-jquery").multiSelect(opts);
+			$(".multiselect-jquery").multiSelect({
+				selectAll: false,
+				selectNone: true,
+				selectNoneText: 'Search All',
+			});
 		});
 	</script>
+	{% comment %}
+	{# another multiselect library, using jQuery-UI and better documented? #}
+	<script type="text/javascript" src="{{ STATIC_URL }}jquery-ui-1.8.18/js/jquery-ui-1.8.18.custom.min.js"></script>
+	<script type="text/javascript" src="{{ STATIC_URL }}jquery-ui-multiselect-widget/src/jquery.multiselect.js"></script>
+	<link rel="stylesheet" href="{{ STATIC_URL }}jquery-ui-multiselect-widget/jquery.multiselect.css" />
+	{% endcomment %}
 {% endblock %}
 
 {% block title %}

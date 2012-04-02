@@ -13,7 +13,7 @@ from haystack import connections
 from haystack.constants import DEFAULT_ALIAS
 
 from binder.test_utils import AptivateEnhancedTestCase
-from binder.models import IntranetUser, ProgramType
+from binder.models import IntranetUser
 from search import SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):
@@ -56,6 +56,18 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual(self.john.program.name, result.program)
         self.assertEqual(reverse('admin:binder_intranetuser_readonly',
             args=[self.john.id]), result.object.get_absolute_url())
+
+    """
+    def test_quick_search_form_uses_select_widget(self):
+        response = self.client.get(reverse('front_page'))
+        form = response.context['search']['form']
+        models_field = form.fields['models']
+
+        from django.forms.widgets import Select
+        self.assertIsInstance(models_field, Select)
+        self.assertSequenceEqual(models_field.choices,
+            models_field.widget.choices)
+    """
     
     def test_search_model_field_widget_uses_jquery(self):
         response = self.client.get(reverse('search'))
@@ -211,4 +223,3 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual('lennon', # not "kenneth"!
             backend.create_spelling_suggestion('Kenneth'))
         self.assertEqual('barbie', backend.create_spelling_suggestion('Barbie'))
-        

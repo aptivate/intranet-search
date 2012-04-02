@@ -222,6 +222,7 @@ from django.contrib.admin.views.main import EMPTY_CHANGELIST_VALUE
 class SearchTable(tables.Table):
     title = tables.Column(verbose_name="Title")
     authors = tables.Column(verbose_name="Authors")
+    uploader = tables.Column(verbose_name="Uploaded By")
     created = tables.Column(verbose_name="Date Added")
     programs = tables.Column(verbose_name="Programs")
     document_type = tables.Column(verbose_name="Document Type")
@@ -287,6 +288,12 @@ class SearchViewWithExtraFilters(SearchView):
         super(SearchViewWithExtraFilters, self).__init__(template, load_all,
             form_class, searchqueryset, context_class, results_per_page)
 
+    """
+    def get_results(self):
+        import pdb; pdb.set_trace()
+        return super(SearchViewWithExtraFilters, self).get_results()
+    """
+     
     def create_response(self):
         if self.results is None:
             return render_to_response(self.template, dict(form=self.form),
@@ -304,7 +311,8 @@ class SearchViewWithExtraFilters(SearchView):
             'score')
         
         if sort_by == 'score':
-            sort_by = None # this is how haystack does sort by relevance?
+            sort_by = None
+            # this is how we tell haystack to "sort by relevance"?
         
         models = self.form.cleaned_data['models']
         if len(models) == 1 and models[0] == 'binder.intranetuser':

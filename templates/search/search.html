@@ -1,6 +1,7 @@
 {% extends 'default_layout.dhtml' %}
 
-{% block extrastyle %}
+{% block style %}
+	{{ block.super }}
 	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery-1.7.1.js"></script>
 	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.multiSelect.js"></script>
 	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.bgiframe.min.js"></script>

@@ -17,7 +17,7 @@ from binder.models import IntranetUser
 from search import SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):
-    fixtures = ['ata_programs', 'test_permissions', 'test_users']
+    fixtures = ['test_programs', 'test_permissions', 'test_users']
 
     def setUp(self):
         super(SearchTest, self).setUp()

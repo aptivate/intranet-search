@@ -136,3 +136,12 @@ class DocumentListView(SearchViewWithExtraFilters):
             kwargs['searchqueryset'] = self.searchqueryset
 
         return self.form_class(data, **kwargs)
+
+    def get_results(self):
+        # ATA requested that the "list of all documents" be disabled
+        # because it takes too long to load.        
+
+        if self.form.cleaned_data.get('q'):
+            return super(SearchViewWithExtraFilters, self).get_results()
+        else:
+            return None

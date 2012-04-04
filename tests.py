@@ -9,12 +9,13 @@ from django.core.handlers.wsgi import WSGIRequest
 from django.core.urlresolvers import reverse
 from django.forms import widgets
 
-from haystack import connections
 from haystack.constants import DEFAULT_ALIAS
 
 from binder.test_utils import AptivateEnhancedTestCase
 from binder.models import IntranetUser
-from search import SearchTable, SuggestionForm
+
+from forms import SuggestionForm
+from tables import SearchTable
 
 class SearchTest(AptivateEnhancedTestCase):
     fixtures = ['test_programs', 'test_permissions', 'test_users']
@@ -26,6 +27,8 @@ class SearchTest(AptivateEnhancedTestCase):
         self.ken = IntranetUser.objects.get(username='ken')
         self.smith = IntranetUser.objects.get(username='smith')
         self.login(self.john)
+        from haystack import connections
+        self.unified = connections[DEFAULT_ALIAS].get_unified_index()
 
     def test_cannot_search_without_login(self):
         """
@@ -71,8 +74,9 @@ class SearchTest(AptivateEnhancedTestCase):
     
     def test_search_model_field_widget_uses_jquery(self):
         response = self.client.get(reverse('search'))
-        form = response.context['form']
-        from search import SelectMultipleWithJquery
+        form = self.assertInDict('form', response.context)
+        
+        from widgets import SelectMultipleWithJquery
         self.assertIsInstance(form.fields['models'].widget,
             SelectMultipleWithJquery)
         self.assertSequenceEqual(form.fields['models'].choices,
@@ -88,7 +92,7 @@ class SearchTest(AptivateEnhancedTestCase):
             {'q': 'john', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
         
-        from search import UserSearchTable
+        from tables import UserSearchTable
         self.assertIsInstance(table, UserSearchTable)
         
         queryset = table.data.queryset
@@ -127,16 +131,17 @@ class SearchTest(AptivateEnhancedTestCase):
         url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
         self.assertSequenceEqual([(url, 302)], response.redirect_chain)
 
-    def test_search_form_has_a_users_only_checkbox(self):
+    def test_quick_search_form_has_a_search_type_dropdown(self):
         response = self.client.get(reverse('search'),
             {'q': 'john'}, follow=True)
         form = response.context['search']['form']
         field = form.fields['models']
+        
         from django.forms import fields
         self.assertIsInstance(field, fields.MultipleChoiceField)
-        from search import CheckboxesWithCustomHtmlName
-        self.assertIsInstance(field.widget, CheckboxesWithCustomHtmlName)
-        self.assertEqual('id_models[]', field.widget.html_name)
+        
+        from widgets import SelectMultipleWithJquery
+        # self.assertIsInstance(field.widget, SelectMultipleWithJquery)
         
         response = self.client.get(reverse('search'),
             {'q': 'john', 'id_models[]': 'binder.intranetuser'})
@@ -190,8 +195,7 @@ class SearchTest(AptivateEnhancedTestCase):
             response.context['suggestform']['suggestion'].value())
 
     def test_notes_field_for_user(self):
-        unified = connections[DEFAULT_ALIAS].get_unified_index()
-        index = unified.get_index(IntranetUser)
+        index = self.unified.get_index(IntranetUser)
         
         from haystack.fields import CharField
         self.assertIsInstance(index.fields['notes'], CharField)
@@ -206,8 +210,7 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertSequenceEqual([(url, 302)], response.redirect_chain)
         
     def test_update_document_removes_old_from_spelling(self):
-        unified = connections[DEFAULT_ALIAS].get_unified_index()
-        index = unified.get_index(IntranetUser)
+        index = self.unified.get_index(IntranetUser)
         backend = index._get_backend(DEFAULT_ALIAS)
         
         from whoosh_backend import CustomWhooshBackend

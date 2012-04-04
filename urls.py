@@ -1,4 +1,4 @@
-from search import SearchViewWithExtraFilters, DocumentListView
+from views import SearchViewWithExtraFilters, DocumentListView
 from django.conf.urls.defaults import patterns, url
 
 urlpatterns = patterns('',

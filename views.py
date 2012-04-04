@@ -12,6 +12,7 @@ class SearchViewWithExtraFilters(SearchView):
     prefix = 'results_'
     page_field = 'page'
     sort_by_field = 'sort'
+    template = 'search/search.html.django'
 
     def __init__(self, template=None, load_all=True, 
         form_class=SearchFormWithJqueryLists, searchqueryset=None, 
@@ -96,6 +97,7 @@ class DocumentListView(SearchViewWithExtraFilters):
     prefix = 'results_'
     page_field = 'page'
     sort_by_field = 'sort'
+    template = 'search/documents.html.django'
 
     def build_form(self, form_kwargs=None):
         data = None

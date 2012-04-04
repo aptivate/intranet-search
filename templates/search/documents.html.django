@@ -1,0 +1,7 @@
+{% extends 'search/search.html.django' %}
+
+{% block body %}
+	<a href="{% url admin:documents_document_add %}">Add document</a>
+	
+	{{ block.super }}
+{% endblock %}

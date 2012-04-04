@@ -160,6 +160,10 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertItemsEqual(('binder.intranetuser',), 
             advanced_search_form.cleaned_data.get('models'))
 
+    def test_no_suggestions_without_query(self):
+        response = self.client.get(reverse('search'), {'q': ''}, follow=True)
+        self.assertNotIn('suggestform', response.context)
+
     def test_spelling_suggestions(self):
         """
         This test relies on the monkeypatch to change the minimum

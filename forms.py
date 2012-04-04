@@ -1,13 +1,12 @@
 from django import forms
-from django.db import models as fields
 from django.forms.widgets import HiddenInput 
 
 from haystack.forms import ModelSearchForm
 
-from binder.models import IntranetUser, Program
+from binder.models import Program
 from documents.models import DocumentType
 
-from widgets import SelectMultipleWithJquery, CheckboxesWithCustomHtmlName
+from widgets import SelectMultipleWithJquery
 from queries import SearchQuerySetWithAllFields
 
 class SearchFormWithAllFields(ModelSearchForm):

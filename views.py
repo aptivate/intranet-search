@@ -25,16 +25,32 @@ class SearchViewWithExtraFilters(SearchView):
         return super(SearchViewWithExtraFilters, self).get_results()
      
     def create_response(self):
+        """
+        Generates the actual HttpResponse to send back to the user.
+        """
+
         if self.results is None:
             return render_to_response(self.template, dict(form=self.form),
                 context_instance=self.context_class(self.request))
-        elif self.form.count == 1:
+        
+        if self.form.count == 1:
             # If only one result, go straight to profile page
             results = list(self.results)
             from django.shortcuts import redirect
             return redirect(results[0].object)
-        else:
-            return super(SearchViewWithExtraFilters, self).create_response() 
+
+        (paginator, page) = self.build_page()
+
+        context = {
+            'query': self.query,
+            'form': self.form,
+            'page': page,
+            'paginator': paginator,
+            'suggestion': None,
+        }
+
+        context.update(self.extra_context())
+        return render_to_response(self.template, context, context_instance=self.context_class(self.request))
 
     def extra_context(self):
         sort_by = self.request.GET.get(self.prefix + self.sort_by_field,
@@ -64,7 +80,11 @@ class SearchViewWithExtraFilters(SearchView):
             # 'result_headers': list(admin_list.result_headers(self)),
         }
 
-        context['suggestform'] = SuggestionForm(data={'suggestion': self.form.get_suggestion()})
+        # don't bother making a suggestion if there's no query
+        if self.form.cleaned_data.get('q'):
+            context['suggestform'] = SuggestionForm(data={
+                'suggestion': self.form.get_suggestion()
+            })
         
         return context
 

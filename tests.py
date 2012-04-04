@@ -141,7 +141,7 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertIsInstance(field, fields.MultipleChoiceField)
         
         from widgets import SelectMultipleWithJquery
-        # self.assertIsInstance(field.widget, SelectMultipleWithJquery)
+        self.assertIsInstance(field.widget, SelectMultipleWithJquery)
         
         response = self.client.get(reverse('search'),
             {'q': 'john', 'id_models[]': 'binder.intranetuser'})

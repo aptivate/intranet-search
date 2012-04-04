@@ -1,30 +1,5 @@
 {% extends 'default_layout.dhtml' %}
 
-{% block style %}
-	{{ block.super }}
-	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery-1.7.1.js"></script>
-	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.multiSelect.js"></script>
-	<script type="text/javascript" src="{{ STATIC_URL }}binder/js/jquery.bgiframe.min.js"></script>
-	<link rel="stylesheet" href="{{ STATIC_URL }}binder/js/jquery.multiSelect.css" />
-	<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}django_tables2/themes/paleblue/css/screen.css" />
-	<script type="text/javascript">
-		jQuery(document).ready(function()
-		{
-			$(".multiselect-jquery").multiSelect({
-				selectAll: false,
-				selectNone: true,
-				selectNoneText: 'Search All',
-			});
-		});
-	</script>
-	{% comment %}
-	{# another multiselect library, using jQuery-UI and better documented? #}
-	<script type="text/javascript" src="{{ STATIC_URL }}jquery-ui-1.8.18/js/jquery-ui-1.8.18.custom.min.js"></script>
-	<script type="text/javascript" src="{{ STATIC_URL }}jquery-ui-multiselect-widget/src/jquery.multiselect.js"></script>
-	<link rel="stylesheet" href="{{ STATIC_URL }}jquery-ui-multiselect-widget/jquery.multiselect.css" />
-	{% endcomment %}
-{% endblock %}
-
 {% block title %}
 	Search
 {% endblock %}

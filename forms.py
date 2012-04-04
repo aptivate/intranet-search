@@ -64,20 +64,9 @@ class QuickSearchForm(SearchFormWithAllFields):
     def __init__(self, *args, **kwargs):
         super(QuickSearchForm, self).__init__(*args, **kwargs)
         
-        # reduce set of choices
         self.fields['models'].widget = \
-            CheckboxesWithCustomHtmlName(html_name='id_models[]')
-        
-        from django.utils.text import capfirst
-        from haystack import connections
-        from haystack.constants import DEFAULT_ALIAS
-        
-        using = DEFAULT_ALIAS
-        choices = [("%s.%s" % (m._meta.app_label, m._meta.module_name),
-            capfirst(unicode(m._meta.verbose_name_plural)))
-            for m in connections[using].get_unified_index().get_indexed_models()
-            if m == IntranetUser]
-        self.fields['models'].choices = sorted(choices, key=lambda x: x[1])
+            SelectMultipleWithJquery(html_name='id_models[]',
+                choices=self.fields['models'].choices)
 
 class SearchFormWithJqueryLists(SearchFormWithAllFields):
     def __init__(self, *args, **kwargs):
@@ -86,8 +75,8 @@ class SearchFormWithJqueryLists(SearchFormWithAllFields):
         # override the one created by the ModelSearchForm constructor
         # to use a jquery drop-down box instead
         self.fields['models'].widget = \
-            SelectMultipleWithJquery(html_name='id_models[]')
-        self.fields['models'].widget.choices = self.fields['models'].choices
+            SelectMultipleWithJquery(html_name='id_models[]',
+                choices=self.fields['models'].choices)
 
 class SuggestionForm(forms.Form):
     suggestion = forms.CharField(widget=HiddenInput, required=False)

@@ -1,5 +1,13 @@
 {% extends 'search/search.html.django' %}
 
+{% block title %}
+	Documents
+{% endblock %}
+
+{% block heading %}
+	Documents
+{% endblock %}
+
 {% block body %}
 	<a href="{% url admin:documents_document_add %}">Add document</a>
 	

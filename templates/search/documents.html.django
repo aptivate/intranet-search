@@ -9,7 +9,11 @@
 {% endblock %}
 
 {% block body %}
-	<a href="{% url admin:documents_document_add %}">Add document</a>
-	
+	<ul class="object-tools">
+		<li>
+			<a href="{% url admin:documents_document_add %}" class="addlink">Add document</a>
+		</li>
+	</ul>
+
 	{{ block.super }}
 {% endblock %}

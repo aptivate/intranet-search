@@ -33,11 +33,15 @@ class SearchViewWithExtraFilters(SearchView):
             return render_to_response(self.template, dict(form=self.form),
                 context_instance=self.context_class(self.request))
         
+        # This is disabled at ATA's request; it also has a bug, only on
+        # Windows, that I was unable to reproduce in time at ATA.
+        """ 
         if self.form.count == 1:
             # If only one result, go straight to profile page
             results = list(self.results)
             from django.shortcuts import redirect
             return redirect(results[0].object)
+        """
 
         (paginator, page) = self.build_page()
 

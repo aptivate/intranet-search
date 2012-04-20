@@ -230,3 +230,26 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual('lennon', # not "kenneth"!
             backend.create_spelling_suggestion('Kenneth'))
         self.assertEqual('barbie', backend.create_spelling_suggestion('Barbie'))
+
+    """
+    def test_search_with_no_results_does_not_crash(self):
+        for model, index in self.unified.indexes.iteritems():
+            from django.contrib.auth.models import User
+            if issubclass(model, User):
+                # don't delete the current user, or we'll be logged out
+                model.objects.exclude(id=self.current_user.id).delete()
+            else:
+                model.objects.all().delete()
+        
+        # list all documents
+        response = self.client.get(reverse('search'),
+            {'q': '', 'id_models[]': 'documents.document'}, follow=True) 
+        form = self.assertIn('form', response.context)
+        self.assertEquals(0, form.count)
+        table = self.assertIn('results_table', response.context,
+            "Should be a results table on this page:\n\n%s" % response.content) 
+        queryset = table.data.queryset
+        results = list(queryset)
+        self.assertEqual(0, len(results), "unexpected results in list: %s" %
+            results)
+    """

@@ -43,22 +43,31 @@ class SearchTest(AptivateEnhancedTestCase):
             'anonymous users should be required to log in before searching: ' +
             '%s' % response)
         
-    def test_search_indexes_people(self):
-        response = self.client.get(reverse('search'), {'q': 'john'})
+    def assert_search_results(self, response, expected_results):
         table = response.context['results_table']
         self.assertIsInstance(table, SearchTable)
         queryset = table.data.queryset
-        results = list(queryset)
-        self.assertEqual(2, len(results), "unexpected results in list: %s" %
-            results)
-        result = results[0]
-        self.assertEqual("binder.intranetuser.%s" % self.john.id, result.id)
-        self.assertEqual(self.john.full_name, result.title)
-        # Free text search for program e.g. 'seeds' and have program people
-        # in results without having to apply drop down filter.
-        self.assertEqual(self.john.program.name, result.program)
-        self.assertEqual(reverse('admin:binder_intranetuser_readonly',
-            args=[self.john.id]), result.object.get_absolute_url())
+        actual_results = list(queryset)
+        self.assertEqual(len(expected_results), len(actual_results),
+            "unexpected results in list: %s" % actual_results)
+
+        for expected, actual in zip(expected_results, actual_results):
+            self.assertEqual("binder.intranetuser.%s" % expected.id, actual.id)
+            self.assertEqual(expected.full_name, actual.title)
+
+            # Free text search for program e.g. 'seeds' and have program people
+            # in results without having to apply drop down filter.
+            if expected.program is None:
+                self.assertIsNone(actual.program)
+            else:
+                self.assertEqual(expected.program.name, actual.program)
+
+            self.assertEqual(reverse('admin:binder_intranetuser_readonly',
+                args=[expected.id]), actual.object.get_absolute_url())
+
+    def test_search_indexes_people(self):
+        response = self.client.get(reverse('search'), {'q': 'john'})
+        self.assert_search_results(response, [self.john, self.smith])
 
     """
     def test_quick_search_form_uses_select_widget(self):
@@ -126,10 +135,7 @@ class SearchTest(AptivateEnhancedTestCase):
     def test_can_find_people_by_program(self):
         response = self.client.get(reverse('search'),
             {'q': self.john.program.name}, follow=True)
-        # only one result, so should be redirected to readonly view page
-        self.assertIsInstance(response.real_request, WSGIRequest)
-        url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
-        self.assertSequenceEqual([(url, 302)], response.redirect_chain)
+        self.assert_search_results(response, [self.john])
 
     def test_quick_search_form_has_a_search_type_dropdown(self):
         response = self.client.get(reverse('search'),
@@ -207,11 +213,7 @@ class SearchTest(AptivateEnhancedTestCase):
         
         response = self.client.get(reverse('search'),
             {'q': "Yoko"}, follow=True)
-
-        # only one result, so should be redirected to readonly view page
-        self.assertIsInstance(response.real_request, WSGIRequest)
-        url = response.real_request.build_absolute_uri(self.john.get_absolute_url())
-        self.assertSequenceEqual([(url, 302)], response.redirect_chain)
+        self.assert_search_results(response, [self.john])
         
     def test_update_document_removes_old_from_spelling(self):
         index = self.unified.get_index(IntranetUser)

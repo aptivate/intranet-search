@@ -11,12 +11,10 @@ from queries import SearchQuerySetWithAllFields
 
 class SearchFormWithAllFields(ModelSearchForm):
     programs = forms.MultipleChoiceField(
-        choices=[(p.id, p.name) for p in Program.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_programs[]'), 
         required=False)
 
     document_types = forms.MultipleChoiceField(
-        choices=[(t.id, t.name) for t in DocumentType.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_document_types[]'), 
         required=False)
     
@@ -27,6 +25,11 @@ class SearchFormWithAllFields(ModelSearchForm):
             kwargs['searchqueryset'] = SearchQuerySetWithAllFields()
         
         super(SearchFormWithAllFields, self).__init__(*args, **kwargs)
+        self.fields['programs'].choices = Program.objects.values_list('id',
+                'name')
+
+        self.fields['document_types'].choices = (DocumentType.objects.
+                values_list('id', 'name'))
         
     def search(self):
         # print "search starting in %s" % object.__str__(self)

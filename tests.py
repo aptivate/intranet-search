@@ -12,13 +12,15 @@ from django.forms import widgets
 from haystack.constants import DEFAULT_ALIAS
 
 from binder.test_utils import AptivateEnhancedTestCase
-from binder.models import IntranetUser
+from binder.models import IntranetUser, Program
+from documents.models import DocumentType
 
-from forms import SuggestionForm
+from forms import SuggestionForm, SearchFormWithAllFields
 from tables import SearchTable
 
 class SearchTest(AptivateEnhancedTestCase):
-    fixtures = ['test_programs', 'test_permissions', 'test_users']
+    fixtures = ['test_programs', 'test_permissions', 'test_users',
+                'test_documenttypes']
 
     def setUp(self):
         super(SearchTest, self).setUp()
@@ -255,3 +257,27 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual(0, len(results), "unexpected results in list: %s" %
             results)
     """
+
+    def test_program_choices_are_updated_for_each_instance(self):
+        programs = Program.objects.values_list('id', 'name')
+        search_form = SearchFormWithAllFields()
+        choices = search_form['programs'].field.choices
+        self.assertItemsEqual(choices, programs)
+
+        Program.objects.all()[0].delete()
+        new_programs = Program.objects.values_list('id', 'name')
+        search_form = SearchFormWithAllFields()
+        choices = search_form['programs'].field.choices
+        self.assertItemsEqual(choices, new_programs)
+
+    def test_document_type_choices_are_updated_for_each_instance(self):
+        documents = DocumentType.objects.values_list('id', 'name')
+        search_form = SearchFormWithAllFields()
+        choices = search_form['document_types'].field.choices
+        self.assertItemsEqual(choices, documents)
+
+        DocumentType.objects.all()[0].delete()
+        new_documents = DocumentType.objects.values_list('id', 'name')
+        search_form = SearchFormWithAllFields()
+        choices = search_form['document_types'].field.choices
+        self.assertItemsEqual(choices, new_documents)

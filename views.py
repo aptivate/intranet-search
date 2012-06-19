@@ -50,7 +50,6 @@ class SearchViewWithExtraFilters(SearchView):
             'form': self.form,
             'page': page,
             'paginator': paginator,
-            'suggestion': None,
         }
 
         context.update(self.extra_context())
@@ -85,7 +84,8 @@ class SearchViewWithExtraFilters(SearchView):
         }
 
         # don't bother making a suggestion if there's no query
-        if self.form.cleaned_data.get('q'):
+        query = self.form.cleaned_data.get('q')
+        if query and query != self.form.get_suggestion():
             context['suggestform'] = SuggestionForm(data={
                 'suggestion': self.form.get_suggestion()
             })

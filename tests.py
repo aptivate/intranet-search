@@ -183,20 +183,23 @@ class SearchTest(AptivateEnhancedTestCase):
         n-gram size of the SpellingChecker to 2, otherwise it won't
         find any matches.
         """
+
+        response = self.client.get(reverse('search'), {'q': 'ringo'})
+        self.assertNotIn('suggestform', response.context,
+            "Should be no suggestion when the suggestion is the same " +
+            "as the actual search")
         
-        response = self.client.get(reverse('search'),
-            {'q': 'rnigo'}, follow=True)
-        sf = response.context['suggestform']
-        self.assertIsInstance(sf, SuggestionForm)
-        self.assertEqual('ringo', sf['suggestion'].value())
-        self.assertIsInstance(sf['suggestion'].field.widget,
+        response = self.client.get(reverse('search'), {'q': 'rnigo'})
+        suggestform = self.assertInDict('suggestform', response.context)
+        self.assertIsInstance(suggestform, SuggestionForm)
+        self.assertEqual('ringo', suggestform['suggestion'].value())
+        self.assertIsInstance(suggestform['suggestion'].field.widget,
             widgets.HiddenInput)
 
         # check that stemming is not done on words ending in "er"
-        response = self.client.get(reverse('search'),
-            {'q': 'shearre'}, follow=True)
-        self.assertEqual('shearer', 
-            response.context['suggestform']['suggestion'].value())
+        response = self.client.get(reverse('search'), {'q': 'shearre'})
+        suggestform = self.assertInDict('suggestform', response.context)
+        self.assertEqual('shearer', suggestform['suggestion'].value())
 
         # check that the job title field is indexed, and stemming is not
         # done on words ending in "er" for spelling queries
@@ -204,12 +207,9 @@ class SearchTest(AptivateEnhancedTestCase):
         # from whoosh_backend import CustomWhooshBackend
         # before(CustomWhooshBackend, 'create_spelling_suggestion')(breakpoint)
         
-        response = self.client.get(reverse('search'),
-            {'q': 'songwritr'}, follow=True)
-        self.assertIn('suggestion', response.context,
-            'unexpected response: %s' % response)
-        self.assertEqual('songwriter', 
-            response.context['suggestform']['suggestion'].value())
+        response = self.client.get(reverse('search'), {'q': 'songwritr'})
+        suggestform = self.assertInDict('suggestform', response.context)
+        self.assertEqual('songwriter', suggestform['suggestion'].value())
 
     def test_notes_field_for_user(self):
         index = self.unified.get_index(IntranetUser)

@@ -37,6 +37,7 @@ class SearchTable(tables.Table):
     
     class Meta:
         attrs = {'class': 'paleblue'}
+        sortable = False
 
 class UserSearchTable(tables.Table):
     title = tables.Column(verbose_name="Name")
@@ -52,3 +53,4 @@ class UserSearchTable(tables.Table):
 
     class Meta:
         attrs = {'class': 'paleblue'}
+        sortable = False

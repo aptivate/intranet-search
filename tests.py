@@ -48,6 +48,9 @@ class SearchTest(AptivateEnhancedTestCase):
     def assert_search_results(self, response, expected_results):
         table = response.context['results_table']
         self.assertIsInstance(table, SearchTable)
+        self.assertFalse(table._meta.sortable, "Table sorting is disabled " +
+            "as it appears not to work properly")
+
         queryset = table.data.queryset
         actual_results = list(queryset)
         self.assertEqual(len(expected_results), len(actual_results),
@@ -105,6 +108,8 @@ class SearchTest(AptivateEnhancedTestCase):
         
         from tables import UserSearchTable
         self.assertIsInstance(table, UserSearchTable)
+        self.assertFalse(table._meta.sortable, "Table sorting is disabled " +
+            "as it appears not to work properly")
         
         queryset = table.data.queryset
         results = list(queryset)

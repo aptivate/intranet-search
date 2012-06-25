@@ -40,9 +40,10 @@ class SearchQuerySetWithAllFields(SearchQuerySet):
     
     def filter(self, **kwargs):
         # print "enter filter: old query = %s" % self.query
+        clone = self._clone()
         
         for param_name, param_value in kwargs.iteritems():
-            dj = BaseSearchQuery()
+            new_condition = BaseSearchQuery()
         
             if param_name == 'content': 
                 # print "fields = %s" % self.fields
@@ -50,20 +51,21 @@ class SearchQuerySetWithAllFields(SearchQuerySet):
                 for field_name, field_object in self.fields.iteritems():
                     if isinstance(field_object, CharField):
                         this_query = {field_name: param_value}
-                        dj.add_filter(SQ(**this_query), use_or=True)
+                        new_condition.add_filter(SQ(**this_query), use_or=True)
             
                 # result = self.__and__(dj)
-                self.query.combine(dj, SQ.AND)
+                clone.query.combine(new_condition, SQ.AND)
 
-            elif getattr(param_value, '__iter__'):
+            elif getattr(param_value, '__iter__', None):
                 for possible_value in param_value:
                     this_query = {param_name: possible_value}
-                    dj.add_filter(SQ(**this_query), use_or=True)
+                    new_condition.add_filter(SQ(**this_query), use_or=True)
 
-                self.query.combine(dj, SQ.AND)
+                clone.query.combine(new_condition, SQ.AND)
             
             else:
-                self.query.add_filter(SQ({param_name: param_value}))
+                this_query = {param_name: param_value}
+                clone.query.add_filter(SQ(**this_query))
         
         # print "exit filter: new query = %s" % self.query
-        return self
+        return clone

@@ -38,22 +38,23 @@ class SearchFormWithAllFields(ModelSearchForm):
             # print "invalid form: %s, %s" % (self.is_bound, self.errors)
             return None
         
-        kwargs = {}
+        query = {}
 
         if self.cleaned_data.get('q'):
-            kwargs['content'] = self.cleaned_data.get('q')
+            query['content'] = self.cleaned_data.get('q')
 
         if self.cleaned_data.get('programs'):
-            kwargs['programs'] = self.cleaned_data.get('programs')
+            query['programs'] = self.cleaned_data.get('programs')
         
         if self.cleaned_data.get('document_types'):
-            kwargs['document_type'] = self.cleaned_data.get('document_types')
+            query['document_type'] = self.cleaned_data.get('document_types')
             
-        if not kwargs and not self.cleaned_data.get('models'):
+        if not query and not self.cleaned_data.get('models'):
             # print "no search"
             return None
-    
-        sqs = self.searchqueryset.auto_query_custom(**kwargs)
+
+        sqs = self.searchqueryset.auto_query_custom(**query)
+        sqs = sqs.exclude(deleted=True)
         sqs = sqs.models(*self.get_models())
         
         self.count = sqs.count()

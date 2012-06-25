@@ -13,7 +13,7 @@ class SearchTable(tables.Table):
     created = tables.Column(verbose_name="Date Added")
     programs = tables.Column(verbose_name="Programs")
     document_type = tables.Column(verbose_name="Document Type")
-    score = tables.Column(verbose_name="Score")
+    # score = tables.Column(verbose_name="Score")
     
     def render_title(self, value, record):
         # print "record = %s (%s)" % (record, dir(record))

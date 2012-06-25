@@ -51,6 +51,10 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertFalse(table._meta.sortable, "Table sorting is disabled " +
             "as it appears not to work properly")
 
+        columns = table.base_columns.items()
+        self.assertNotIn('score', [c[0] for c in columns],
+            "Score column is disabled on request")
+
         queryset = table.data.queryset
         actual_results = list(queryset)
         self.assertEqual(len(expected_results), len(actual_results),

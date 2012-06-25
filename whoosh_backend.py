@@ -246,6 +246,20 @@ class CustomWhooshBackend(original_backend.WhooshSearchBackend):
         sp.add_field(self.index, self.content_field_name)
         sp.add_field(self.index, 'job_title')
         """
+        
+    def search(self, query_string, sort_by=None, start_offset=0, end_offset=None,
+               fields='', highlight=False, facets=None, date_facets=None, query_facets=None,
+               narrow_queries=None, spelling_query=None, within=None,
+               dwithin=None, distance_point=None, models=None,
+               limit_to_registered_models=None, result_class=None, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(query_string)
+        return super(CustomWhooshBackend, self).search(query_string, sort_by,
+            start_offset, end_offset, fields, highlight, facets, date_facets,
+            query_facets, narrow_queries, spelling_query, within, dwithin,
+            distance_point, models, limit_to_registered_models, result_class,
+            **kwargs)
     
     def create_spelling_suggestion(self, query_string):
         if not self.setup_complete:

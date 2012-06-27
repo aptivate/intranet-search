@@ -11,7 +11,7 @@ class Command(BaseCommand):
         if len(args) == 1:
             path = HAYSTACK_CONNECTIONS['default']['PATH']
             query_str = args[0]
-        elif len(args) == 1:
+        elif len(args) == 2:
             path = args[0]
             query_str = args[1]
         else:

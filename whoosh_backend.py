@@ -252,9 +252,23 @@ class CustomWhooshBackend(original_backend.WhooshSearchBackend):
                narrow_queries=None, spelling_query=None, within=None,
                dwithin=None, distance_point=None, models=None,
                limit_to_registered_models=None, result_class=None, **kwargs):
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(query_string)
+        
+        # needed to initialise self.parser, and will be called anyway
+        # by superclass search() method if not already done, so no harm
+        # in doing it here.
+        self.setup()
+        
+        from binder.monkeypatch import before
+        @before(self.parser, 'parse')
+        def log_final_query_string(final_query_string):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(final_query_string)
+            
+        #import logging
+        #logger = logging.getLogger(__name__)
+        #logger.debug(query_string)
+        
         return super(CustomWhooshBackend, self).search(query_string, sort_by,
             start_offset, end_offset, fields, highlight, facets, date_facets,
             query_facets, narrow_queries, spelling_query, within, dwithin,

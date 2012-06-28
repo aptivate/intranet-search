@@ -146,6 +146,6 @@ class DocumentListView(SearchViewWithExtraFilters):
         # because it takes too long to load.        
 
         if self.form.cleaned_data.get('q'):
-            return super(SearchViewWithExtraFilters, self).get_results()
+            return super(DocumentListView, self).get_results()
         else:
             return None

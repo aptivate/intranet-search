@@ -290,3 +290,33 @@ class SearchTest(AptivateEnhancedTestCase):
         search_form = SearchFormWithAllFields()
         choices = search_form['document_types'].field.choices
         self.assertItemsEqual(choices, new_documents)
+
+    def test_searchqueryset_slice_does_not_return_None_entries_for_deleted_objects(self):
+        """
+        https://github.com/toastdriven/django-haystack/issues/602
+        """
+
+        response = self.client.get(reverse('search'),
+            {'id_models[]': 'binder.intranetuser', 'q': 'ringo'})
+        self.assertEqual(response.status_code, 200)
+        table, queryset = self.assert_search_results_table_get_queryset(response)
+        self.assertItemsEqual([self.ringo.pk], [r.pk for r in queryset[0:200]],
+            "Missing or unexpected search results")
+
+        # temporarily disable model delete signal handler, to leave
+        # an entry in the search index pointing to a nonexistent model
+        from haystack import connections
+        ui = connections['default'].get_unified_index()
+        from binder import configurable 
+        usi = ui.get_index(configurable.UserModel)
+        from django.db.models import signals
+        signals.post_delete.disconnect(usi.remove_object, sender=usi.get_model())
+        self.ringo.delete()
+        signals.post_delete.connect(usi.remove_object, sender=usi.get_model())
+
+        response = self.client.get(reverse('search'),
+            {'id_models[]': 'binder.intranetuser', 'q': 'ringo'})
+        self.assertEqual(response.status_code, 200)
+        table, queryset = self.assert_search_results_table_get_queryset(response)
+        self.assertItemsEqual([], queryset[0:200],
+            "Missing or unexpected search results")

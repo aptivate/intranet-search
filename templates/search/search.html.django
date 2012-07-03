@@ -62,7 +62,29 @@
 				{% load django_tables2 %}
 				{% render_table results_table %}
 			{% else %}
-				<p>No results found.</p>
+				<p class="no-results">Your search for
+					<span class="failed-search">{{ form.q.value }}</span>
+					did not match
+					
+					{% if form.models.value %}
+						any
+						{% load lists %}
+						{{ form.get_models|format_items:"item._meta.verbose_name_plural.title"|join_last_two:" or "|join:", " }}.
+					{% else %}
+						anything.
+					{% endif %}
+				</p>
+					
+				<h3>Suggestions</h3>
+				
+				<ul>
+				<li>Make sure all words are spelled correctly.</li>
+				<li>Try different keywords.</li>
+				<li>Try more general keywords.</li>
+				<li>Try fewer keywords.</li>
+				<li>Try searching for the author of a document, or a word
+					that it contains somewhere.</li>
+				</ul>
 			{% endif %}
 		{% else %}
 			<p>Please enter some search terms above, or select some

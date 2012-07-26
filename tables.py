@@ -23,8 +23,10 @@ class SearchTable(tables.Table):
     def render_authors(self, value):
         if not value:
             return EMPTY_CHANGELIST_VALUE
-        users = IntranetUser.objects.in_bulk(value)
-        return ', '.join([users[long(i)].full_name for i in value])
+        found_users = IntranetUser.objects.in_bulk(value)
+        return ', '.join([
+            found_users[long(i)].full_name for i in value
+            if long(i) in found_users])
     
     def render_programs(self, value):
         programs = Program.objects.in_bulk(value)

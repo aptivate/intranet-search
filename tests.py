@@ -314,3 +314,38 @@ class SearchTest(AptivateEnhancedTestCase):
         table, queryset = self.assert_search_results_table_get_queryset(response)
         self.assertItemsEqual([], queryset[0:200],
             "Missing or unexpected search results")
+
+from documents.tests import DocumentTestMixin
+class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
+    fixtures = ['test_programs', 'test_permissions', 'test_users',
+                'test_documenttypes']
+
+    def setUp(self):
+        super(DocumentSearchTests, self).setUp()
+        self.john = IntranetUser.objects.get(username='john')
+        self.login(self.john)
+
+    def test_create_document_indexes_program_properly(self):
+        self.assert_create_document_by_post(title='boink')
+
+        # did it save?
+        from documents.models import Document
+        doc = Document.objects.get()
+        self.assertEqual('boink', doc.title)
+
+        program = Program.objects.all()[0]
+        self.assertItemsEqual([program], doc.programs.all())
+        
+        with self.backend.index.searcher() as searcher:
+            from haystack.constants import ID, DJANGO_CT, DJANGO_ID
+            kwargs = {
+                DJANGO_CT: u"%s.%s" % (doc._meta.app_label, doc._meta.module_name),
+                DJANGO_ID: u"%s" % doc.pk,
+                }
+            results = list(searcher.documents(**kwargs))
+            self.assertEqual(1, len(results), "expected only one result, " +
+                "but found: %s" % results)
+            result = results[0]
+            from django.utils.encoding import force_unicode
+            self.assertEqual(force_unicode(program.id), result['programs'])
+        

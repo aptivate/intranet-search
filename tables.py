@@ -8,7 +8,7 @@ from documents.models import DocumentType
 
 class SearchTable(tables.Table):
     title = tables.Column(verbose_name="Title")
-    authors = tables.Column(verbose_name="Authors")
+    author_names = tables.Column(verbose_name="Authors")
     uploader = tables.Column(verbose_name="Uploaded By")
     created = tables.Column(verbose_name="Date Added")
     programs = tables.Column(verbose_name="Programs")
@@ -20,13 +20,10 @@ class SearchTable(tables.Table):
         return mark_safe("<a href='%s'>%s</a>" % (record.object.get_absolute_url(),
             value))
 
-    def render_authors(self, value):
+    def render_author_names(self, value):
         if not value:
             return EMPTY_CHANGELIST_VALUE
-        found_users = IntranetUser.objects.in_bulk(value)
-        return ', '.join([
-            found_users[long(i)].full_name for i in value
-            if long(i) in found_users])
+        return ', '.join(value)
     
     def render_programs(self, value):
         programs = Program.objects.in_bulk(value)

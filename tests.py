@@ -323,6 +323,7 @@ class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
     def setUp(self):
         super(DocumentSearchTests, self).setUp()
         self.john = IntranetUser.objects.get(username='john')
+        self.ringo = IntranetUser.objects.get(username='ringo')
         self.login(self.john)
 
     def test_create_document_indexes_program_properly(self):
@@ -349,3 +350,32 @@ class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
             from django.utils.encoding import force_unicode
             self.assertEqual(force_unicode(program.id), result['programs'])
         
+    def test_search_results_show_external_authors_field(self):
+        self.assert_create_document_by_post(
+            title='boink',
+            authors=[self.john.id, self.ringo.id],
+            external_authors="Pee Wee Herman")
+
+        # did it save?
+        from documents.models import Document
+        doc = Document.objects.get()
+        self.assertEqual('boink', doc.title)
+
+        response = self.client.get(reverse('search'), {'q': 'boink'})
+        table = response.context['results_table']
+        self.assertIsInstance(table, SearchTable)
+
+        columns = table.base_columns.items()
+        self.assertIn('author_names', [c[0] for c in columns],
+            "Can't find author_names column in table")
+
+        queryset = table.data.queryset
+        from haystack.query import SearchQuerySet
+        self.assertIsInstance(queryset, SearchQuerySet,
+            "Table should be generated from a SearchQuerySet, not a " +
+            "normal QuerySet, otherwise the Haystack index is not being used")
+        
+        row = list(queryset)[0]
+        self.assertItemsEqual([self.john.full_name, self.ringo.full_name,
+            "Pee Wee Herman"], row.author_names,
+            "Authors rendered in search results table, but not as expected")

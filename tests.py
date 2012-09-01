@@ -30,7 +30,6 @@ class SearchTest(AptivateEnhancedTestCase):
         self.smith = IntranetUser.objects.get(username='smith')
         self.login(self.john)
         from haystack import connections
-        self.unified = connections[DEFAULT_ALIAS].get_unified_index()
 
     def test_cannot_search_without_login(self):
         """
@@ -216,7 +215,7 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual('songwriter', suggestform['suggestion'].value())
 
     def test_notes_field_for_user(self):
-        index = self.unified.get_index(IntranetUser)
+        index = self.unified_index.get_index(IntranetUser)
         
         from haystack.fields import CharField
         self.assertIsInstance(index.fields['notes'], CharField)
@@ -227,22 +226,19 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assert_search_results(response, [self.john])
         
     def test_update_document_removes_old_from_spelling(self):
-        index = self.unified.get_index(IntranetUser)
-        backend = index._get_backend(DEFAULT_ALIAS)
-        
         from whoosh_backend import CustomWhooshBackend
-        self.assertIsInstance(backend, CustomWhooshBackend)
+        self.assertIsInstance(self.backend, CustomWhooshBackend)
 
-        self.assertEqual('kenneth', backend.create_spelling_suggestion('Kenneth'))
+        self.assertEqual('kenneth', self.backend.create_spelling_suggestion('Kenneth'))
         self.assertEqual('starr', # not "barbie"!
-            backend.create_spelling_suggestion('Barbie'))
+            self.backend.create_spelling_suggestion('Barbie'))
 
         self.ken.full_name = "Barbie"
         self.ken.save()
         
         self.assertEqual('lennon', # not "kenneth"!
-            backend.create_spelling_suggestion('Kenneth'))
-        self.assertEqual('barbie', backend.create_spelling_suggestion('Barbie'))
+            self.backend.create_spelling_suggestion('Kenneth'))
+        self.assertEqual('barbie', self.backend.create_spelling_suggestion('Barbie'))
 
     """
     def test_search_with_no_results_does_not_crash(self):
@@ -305,10 +301,8 @@ class SearchTest(AptivateEnhancedTestCase):
 
         # temporarily disable model delete signal handler, to leave
         # an entry in the search index pointing to a nonexistent model
-        from haystack import connections
-        ui = connections['default'].get_unified_index()
         from binder import configurable 
-        usi = ui.get_index(configurable.UserModel)
+        usi = self.unified_index.get_index(configurable.UserModel)
         from django.db.models import signals
         signals.post_delete.disconnect(usi.remove_object, sender=usi.get_model())
         self.ringo.delete()

@@ -275,17 +275,17 @@ class SearchTest(AptivateEnhancedTestCase):
         choices = search_form['programs'].field.choices
         self.assertItemsEqual(choices, new_programs)
 
-    def test_document_type_choices_are_updated_for_each_instance(self):
-        documents = DocumentType.objects.values_list('id', 'name')
+    def test_document_type_choices_are_updated_live_not_loaded_at_startup(self):
+        doc_types = DocumentType.objects.values_list('id', 'name')
         search_form = SearchFormWithAllFields()
         choices = search_form['document_types'].field.choices
-        self.assertItemsEqual(choices, documents)
+        self.assertItemsEqual(choices, doc_types)
 
         DocumentType.objects.all()[0].delete()
-        new_documents = DocumentType.objects.values_list('id', 'name')
+        new_doc_types = DocumentType.objects.values_list('id', 'name')
         search_form = SearchFormWithAllFields()
         choices = search_form['document_types'].field.choices
-        self.assertItemsEqual(choices, new_documents)
+        self.assertItemsEqual(choices, new_doc_types)
 
     def test_searchqueryset_slice_does_not_return_None_entries_for_deleted_objects(self):
         """

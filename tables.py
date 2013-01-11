@@ -16,7 +16,8 @@ class SearchTable(tables.Table):
     # score = tables.Column(verbose_name="Score")
     
     def render_title(self, value, record):
-        # print "record = %s (%s)" % (record, dir(record))
+        if not record:
+            return EMPTY_CHANGELIST_VALUE
         return mark_safe("<a href='%s'>%s</a>" % (record.object.get_absolute_url(),
             value))
 
@@ -26,6 +27,8 @@ class SearchTable(tables.Table):
         return ', '.join(value)
     
     def render_programs(self, value):
+        if not value:
+            return EMPTY_CHANGELIST_VALUE
         programs = Program.objects.in_bulk(value)
         return ', '.join([programs[long(i)].name for i in value])
     

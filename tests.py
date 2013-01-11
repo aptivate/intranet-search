@@ -18,7 +18,36 @@ from documents.models import DocumentType
 from forms import SuggestionForm, SearchFormWithAllFields
 from tables import SearchTable
 
-class SearchTest(AptivateEnhancedTestCase):
+class SearchTestBase(AptivateEnhancedTestCase):
+    def _pre_setup(self):
+        """
+        We need to change the Haystack configuration before fixtures are
+        loaded, otherwise they end up in the developer's index and not the
+        temporary test index, which is bad for both developers and tests.
+        
+        This is an internal interface and its use is not recommended.
+        """
+
+        super(SearchTestBase, self)._pre_setup()
+
+        from haystack.constants import DEFAULT_ALIAS
+        from django.conf import settings
+        settings.HAYSTACK_CONNECTIONS[DEFAULT_ALIAS]['PATH'] = '/dev/shm/whoosh'
+        settings.HAYSTACK_CONNECTIONS[DEFAULT_ALIAS]['SILENTLY_FAIL'] = False
+        # settings.HAYSTACK_CONNECTIONS[DEFAULT_ALIAS]['STORAGE'] = 'ram'
+
+        from haystack import connections
+        self.search_conn = connections[DEFAULT_ALIAS]
+        # self.search_conn.get_backend().use_file_storage = False
+        # self.search_conn.get_backend().setup()
+        self.backend = self.search_conn.get_backend()
+        self.backend.delete_index()
+
+    def setUp(self):
+        super(SearchTestBase, self).setUp()
+        self.unified_index = self.search_conn.get_unified_index()
+        
+class SearchTest(SearchTestBase):
     fixtures = ['test_programs', 'test_permissions', 'test_users',
                 'test_documenttypes']
 
@@ -116,8 +145,9 @@ class SearchTest(AptivateEnhancedTestCase):
         
         queryset = table.data.queryset
         results = list(queryset)
-        self.assertEqual(2, len(results), "unexpected results in list: %s" %
+        self.assertEqual(1, len(results), "unexpected results in list: %s" %
             results)
+        self.assertEqual(self.john.id, results[0].pk)
         
         columns = table.base_columns.items()
         # list with names as hyperlinks to profile page and job title 
@@ -129,13 +159,19 @@ class SearchTest(AptivateEnhancedTestCase):
         self.assertEqual('logged_in', columns[2][0])
         self.assertEqual('Logged In', columns[2][1].verbose_name)
         
+        # john is logged in, so the column should show Yes instead of No
+        import pdb; pdb.set_trace()
         self.assertEquals("Yes", table.page.object_list.next()["logged_in"])
 
-        # john is logged in, so the column should show Yes instead of No
+        # now try Kenneth, who is not logged in
         response = self.client.get(reverse('search'),
             {'q': 'starr', 'id_models[]': 'binder.intranetuser'})
         table = response.context['results_table']
-        self.assertEquals("No", table.page.object_list.next()["logged_in"])
+        results = list(table.page.object_list)
+        self.assertEqual(1, len(results), "unexpected results in list: %s" %
+            results)
+        self.assertEqual(self.kenneth.full_name, results[0]["title"])
+        self.assertEquals("No", results[0]["logged_in"])
 
     def test_can_search_for_all_users(self):
         response = self.client.get(reverse('search'),
@@ -316,7 +352,7 @@ class SearchTest(AptivateEnhancedTestCase):
             "Missing or unexpected search results")
 
 from documents.tests import DocumentTestMixin
-class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
+class DocumentSearchTests(SearchTestBase, DocumentTestMixin):
     fixtures = ['test_programs', 'test_permissions', 'test_users',
                 'test_documenttypes']
 
@@ -325,6 +361,8 @@ class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
         self.john = IntranetUser.objects.get(username='john')
         self.ringo = IntranetUser.objects.get(username='ringo')
         self.login(self.john)
+        from documents.models import Document
+        self.index = self.unified_index.get_index(Document) 
 
     def test_create_document_indexes_program_properly(self):
         self.assert_create_document_by_post(title='boink')
@@ -379,3 +417,89 @@ class DocumentSearchTests(AptivateEnhancedTestCase, DocumentTestMixin):
         self.assertItemsEqual([self.john.full_name, self.ringo.full_name,
             "Pee Wee Herman"], row.author_names,
             "Authors rendered in search results table, but not as expected")
+
+    def test_word_2003_document_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('word_2003.doc', doc.file) 
+        
+        self.assertEquals("Lorem ipsum dolor sit amet, consectetur " +
+            "adipiscing elit.\n\n\nPraesent pharetra urna eu arcu blandit " +
+            "nec pretium odio fermentum. Sed in orci quis risus interdum " +
+            "lacinia ut eu nisl.\n\n", self.index.prepare_text(doc))
+
+    def test_word_2007_document_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('word_2007.docx', doc.file) 
+        
+        self.assertEquals("Lorem ipsum dolor sit amet, consectetur " +
+            "adipiscing elit.\n\nPraesent pharetra urna eu arcu blandit " +
+            "nec pretium odio fermentum. Sed in orci quis risus interdum " +
+            "lacinia ut eu nisl.\n", self.index.prepare_text(doc))
+
+    def test_word_2007_unicode(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('smartquote-bullet.docx', doc.file) 
+        from django.utils.encoding import force_unicode
+        self.assertEquals(u'\u2019\n\u2022\t\n',
+            force_unicode(self.index.prepare_text(doc)))
+
+    def test_excel_2003_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('excel_2003.xls', doc.file) 
+        
+        self.assertEquals("Sheet1\n\tLorem ipsum dolor sit amet, " +
+            "consectetur adipiscing elit.\t\tPraesent pharetra urna eu " +
+            "arcu blandit nec pretium odio fermentum.\n\tSed in orci " +
+            "quis risus interdum lacinia ut eu nisl.\n\t\tSed facilisis " +
+            "nibh eu diam tincidunt pellentesque semper nulla auctor.\n" +
+            "\n\nSheet2\n\t\n\n\nSheet3\n\t\n\n\n",
+            self.index.prepare_text(doc))
+
+    def test_excel_2007_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('excel_2007.xlsx', doc.file) 
+        
+        self.assertEquals("Sheet1\n\tLorem ipsum dolor sit amet, " +
+            "consectetur adipiscing elit.\tPraesent pharetra urna eu " +
+            "arcu blandit nec pretium odio fermentum.\n\tSed in orci " +
+            "quis risus interdum lacinia ut eu nisl.\n\tSed facilisis " +
+            "nibh eu diam tincidunt pellentesque semper nulla auctor." +
+            "\n\n&\"Times New Roman,Regular\"&12&A\t\n\n" +
+            "&\"Times New Roman,Regular\"&12Page &P\t\n\n\nSheet2\n\n" +
+            "&\"Times New Roman,Regular\"&12&A\t\n\n" +
+            "&\"Times New Roman,Regular\"&12Page &P\t\n\n\nSheet3\n\n" +
+            "&\"Times New Roman,Regular\"&12&A\t\n\n" +
+            "&\"Times New Roman,Regular\"&12Page &P\t\n\n\n",
+            self.index.prepare_text(doc))
+
+    def test_powerpoint_2003_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('powerpoint_2003.ppt', doc.file) 
+        
+        self.assertEquals("Lorem Ipsum\n" +
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n" +
+            "Praesent pharetra urna eu arcu blandit nec pretium odio " +
+            "fermentum.\n" +
+            "Sed in orci quis risus interdum lacinia ut eu nisl.\n\n\n\n\n",
+            self.index.prepare_text(doc))
+
+    def test_powerpoint_2007_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('powerpoint_2007.pptx', doc.file) 
+        
+        self.assertEquals("Lorem Ipsum\n" +
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n" +
+            "Praesent pharetra urna eu arcu blandit nec pretium odio " +
+            "fermentum.\n" +
+            "Sed in orci quis risus interdum lacinia ut eu nisl.\n",
+            self.index.prepare_text(doc))
+
+    def test_pdf_indexing(self):
+        doc = Document()
+        self.assign_fixture_to_filefield('word_pdf.pdf', doc.file) 
+        
+        self.assertEquals("\nLorem ipsum dolor sit amet, consectetur " +
+            "adipiscing elit.\nPraesent pharetra urna eu arcu blandit " +
+            "nec pretium odio fermentum. Sed in orci quis risus interdum " +
+            "lacinia ut eu nisl.\n\n\n", self.index.prepare_text(doc))
+

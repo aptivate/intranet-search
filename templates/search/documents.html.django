@@ -11,7 +11,7 @@
 {% block body %}
 	<ul class="object-tools">
 		<li>
-			<a href="{% url admin:documents_document_add %}" class="addlink">Add document</a>
+			<a href="{% url 'admin:documents_document_add' %}" class="addlink">Add document</a>
 		</li>
 	</ul>
 

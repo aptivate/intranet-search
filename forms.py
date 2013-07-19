@@ -3,9 +3,6 @@ from django.forms.widgets import HiddenInput
 
 from haystack.forms import ModelSearchForm
 
-from binder.models import Program
-from documents.models import DocumentType
-
 from widgets import SelectMultipleWithJquery
 from queries import SearchQuerySetWithAllFields
 

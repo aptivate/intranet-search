@@ -3,9 +3,6 @@ from django.utils.safestring import mark_safe
 
 import django_tables2 as tables
 
-from binder.models import IntranetUser, Program
-from documents.models import DocumentType
-
 class SearchTable(tables.Table):
     title = tables.Column(verbose_name="Title")
     author_names = tables.Column(verbose_name="Authors")

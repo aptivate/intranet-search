@@ -15,9 +15,6 @@ from haystack.models import SearchResult
 from haystack.query import SearchQuerySet, AutoQuery
 from haystack.views import SearchView
 
-from binder.models import Program, IntranetUser
-from documents.models import DocumentType
-
 import django_tables2 as tables
 
 haystack = connections[DEFAULT_ALIAS].get_unified_index()
@@ -137,6 +134,10 @@ class SelectMultipleWithJquery(widgets.SelectMultiple):
         return v
 
 class SearchFormWithAllFields(ModelSearchForm):
+    """
+    Example search form. Customise to match your fields.
+    """
+    """
     programs = forms.MultipleChoiceField(
         choices=[(p.id, p.name) for p in Program.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_programs[]'), 
@@ -146,7 +147,8 @@ class SearchFormWithAllFields(ModelSearchForm):
         choices=[(t.id, t.name) for t in DocumentType.objects.all()],
         widget=SelectMultipleWithJquery(html_name='id_document_types[]'), 
         required=False)
-    
+    """
+
     def __init__(self, *args, **kwargs):
         # print "SearchFormWithAllFields %s initialised with %s, %s" % (
         #     object.__str__(self), args, kwargs)

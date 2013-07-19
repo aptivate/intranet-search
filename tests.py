@@ -13,7 +13,6 @@ from haystack import connections
 from haystack.constants import DEFAULT_ALIAS
 
 from binder.test_utils import AptivateEnhancedTestCase
-from binder.models import IntranetUser, ProgramType
 from search import SearchTable, SuggestionForm
 
 class SearchTest(AptivateEnhancedTestCase):

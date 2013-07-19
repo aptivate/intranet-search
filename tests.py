@@ -1,10 +1,3 @@
-"""
-This file demonstrates writing tests using the unittest module. These will pass
-when you run "manage.py test".
-
-Replace this with more appropriate tests for your application.
-"""
-
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.urlresolvers import reverse
 from django.forms import widgets
@@ -12,8 +5,7 @@ from django.forms import widgets
 from haystack.constants import DEFAULT_ALIAS
 
 from binder.test_utils import AptivateEnhancedTestCase
-from binder.models import IntranetUser, Program
-from documents.models import DocumentType
+from search import SearchTable, SuggestionForm
 
 from forms import SuggestionForm, SearchFormWithAllFields
 from tables import SearchTable
@@ -273,6 +265,7 @@ class SearchTest(SearchTestBase):
         self.ken.save()
         
         self.assertEqual('lennon', # not "kenneth"!
+<<<<<<< HEAD
             self.backend.create_spelling_suggestion('Kenneth'))
         self.assertEqual('barbie', self.backend.create_spelling_suggestion('Barbie'))
 
@@ -503,3 +496,8 @@ class DocumentSearchTests(SearchTestBase, DocumentTestMixin):
             "nec pretium odio fermentum. Sed in orci quis risus interdum " +
             "lacinia ut eu nisl.\n\n\n", self.index.prepare_text(doc))
 
+=======
+            backend.create_spelling_suggestion('Kenneth'))
+        self.assertEqual('barbie', backend.create_spelling_suggestion('Barbie'))
+        
+>>>>>>> 4339528e8e1401f17c829dd7efb54ad1d5cd41c7

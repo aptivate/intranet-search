@@ -1,5 +1,5 @@
 from views import SearchViewWithExtraFilters, DocumentListView
-from django.conf.urls.defaults import patterns, url
+from django.conf.urls import patterns, url
 
 urlpatterns = patterns('',
     url(r'^$', SearchViewWithExtraFilters(), name='search'),

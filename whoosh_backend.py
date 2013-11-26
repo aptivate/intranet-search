@@ -316,7 +316,9 @@ class FixedWhooshSearchBackend(CustomWhooshBackend):
             if facets is not None:
                 search_kwargs['groupedby'] = []
                 for facet_fieldname, extra_options in facets.items():
-                    search_kwargs['groupedby'].append(facet_fieldname)
+                    from whoosh.sorting import FieldFacet
+                    facet = FieldFacet(facet_fieldname, allow_overlap=True)
+                    search_kwargs['groupedby'].append(facet)
 
             # Handle the case where the results have been narrowed.
             if narrowed_results is not None:

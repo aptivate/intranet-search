@@ -277,7 +277,9 @@ class FixedWhooshSearchBackend(CustomWhooshBackend):
             narrow_searcher = self.index.searcher()
 
             for nq in narrow_queries:
-                recent_narrowed_results = narrow_searcher.search(self.parser.parse(force_text(nq)))
+                # workaround for Haystack issue 575
+                recent_narrowed_results = narrow_searcher.search(
+                    self.parser.parse(force_text(nq)), limit=None)
 
                 if len(recent_narrowed_results) <= 0:
                     return {
@@ -373,20 +375,22 @@ class FixedWhooshSearchBackend(CustomWhooshBackend):
         results = super(FixedWhooshSearchBackend, self)._process_results(raw_page,
             highlight, query_string, spelling_query, result_class)
 
-        facets_out = {
-            'fields': {},
-            'dates': {},
-            'queries': {},
-        }
+        if facets is not None:
+            facets_out = {
+                'fields': {},
+                'dates': {},
+                'queries': {},
+            }
 
-        for facet_fieldname, extra_options in facets.items():
-            facet_results = raw_page.results.groups(facet_fieldname)
-            facet_term_counts = []
-            for term, term_results in facet_results.iteritems():
-                facet_term_counts.append((term, len(term_results)))
-            facets_out['fields'][facet_fieldname] = facet_term_counts
+            for facet_fieldname, extra_options in facets.items():
+                facet_results = raw_page.results.groups(facet_fieldname)
+                facet_term_counts = []
+                for term, term_results in facet_results.iteritems():
+                    facet_term_counts.append((term, len(term_results)))
+                facets_out['fields'][facet_fieldname] = facet_term_counts
 
-        results['facets'] = facets_out
+            results['facets'] = facets_out
+
         return results
 
 class FixedWhooshEngine(BaseEngine):

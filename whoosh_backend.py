@@ -5,7 +5,6 @@ from haystack.backends import BaseEngine
 
 from whoosh import analysis, fields, highlight, query, scoring
 from whoosh.reading import TermNotFound
-from whoosh.spelling import SpellChecker
 from whoosh.support.levenshtein import distance
 from whoosh.writing import AsyncWriter
 
@@ -34,154 +33,6 @@ def CUSTOM_MERGE_SMALL(writer, segments):
         unchanged_segments.extend(segments_to_merge)
     
     return unchanged_segments
-
-# Based on the "Old, obsolete spell checker - DO NOT USE" from Whoosh
-# by Matt Chaput. See http://bitbucket.org/mchaput/whoosh/issue/224
-# for rationale.
-
-class SpellCheckerWithIncrementalUpdates(SpellChecker):
-    """
-    This feature is obsolete, apparently.
-    """
-
-    def __init__(self, storage, document_reader, spelling_fields,
-            indexname="SPELL", booststart=2.0, boostend=1.0, mingram=3, 
-            maxgram=4, minscore=0.5):
-        super(SpellCheckerWithIncrementalUpdates, self).__init__(storage,
-            indexname, booststart, boostend, mingram, maxgram,
-            minscore)
-        self.document_reader = document_reader
-        self.spelling_fields = spelling_fields
-
-    def _schema(self):
-        # Creates a schema given this object's mingram and maxgram attributes.
-
-        from whoosh.fields import Schema, FieldType, ID, STORED
-        from whoosh.formats import Frequency
-        from whoosh.analysis import SimpleAnalyzer
-
-        idtype = ID()
-        freqtype = FieldType(Frequency(), SimpleAnalyzer())
-
-        fls = [("word", STORED)]
-        for size in xrange(self.mingram, self.maxgram + 1):
-            fls.extend([("start%s" % size, idtype),
-                        ("end%s" % size, idtype),
-                        ("gram%s" % size, freqtype)])
-
-        return Schema(**dict(fls))
-
-    def suggestions_and_scores(self, text, weighting=None):
-        raise NotImplementedError()
-
-    def suggestions(self, text, weighting=None):
-        if weighting is None:
-            weighting = scoring.TF_IDF()
-
-        grams = defaultdict(list)
-        for size in xrange(self.mingram, self.maxgram + 1):
-            key = "gram%s" % size
-            nga = analysis.NgramAnalyzer(size)
-            for t in nga(text):
-                grams[key].append(t.text)
-
-        queries = []
-        for size in xrange(self.mingram, min(self.maxgram + 1, len(text))):
-            key = "gram%s" % size
-            gramlist = grams[key]
-            queries.append(query.Term("start%s" % size, gramlist[0],
-                                      boost=self.booststart))
-            queries.append(query.Term("end%s" % size, gramlist[-1],
-                                      boost=self.boostend))
-            for gram in gramlist:
-                queries.append(query.Term(key, gram))
-
-        q = query.Or(queries)
-        ix = self.index()
-        s = ix.searcher(weighting=weighting)
-        try:
-            result = s.search(q, limit=None)
-            return [(fs["word"], result.score(i))
-                for i, fs in enumerate(result)]
-        finally:
-            s.close()
-
-    def suggest(self, text, number=3, usescores=False):
-        suggestions = self.suggestions(text)
-
-        if usescores:
-            def keyfn(a):
-                return 0 - (1 / distance(text, a[0])) * a[1]
-            
-            def generate_word_score_tuples(suggestions):
-                for word, spelling_score in suggestions:
-                    for field in self.spelling_fields:
-                        if (field, word) in self.document_reader:
-                            yield (word, 
-                                self.document_reader.term_info(field, word).score,
-                                spelling_score)
-                            continue
-            
-            suggestions = list(generate_word_score_tuples(suggestions))
-        else:
-            def keyfn(a):
-                return distance(text, a[0])
-
-            def filter_out_dead_words(suggestions):
-                for word, spelling_score in suggestions:
-                    for field in self.spelling_fields:
-                        if (field, word) in self.document_reader:
-                            yield (word, None, spelling_score)
-                            continue
-            
-            suggestions = list(filter_out_dead_words(suggestions))
-        
-        suggestions.sort(key=keyfn)
-        
-        return [word for word, document_score_or_none, spelling_score
-            in suggestions[:number]
-            if spelling_score >= self.minscore]
-
-    def add_field(self, ix, fieldname):
-        raise NotImplementedError()
-        """
-        with ix.reader() as document_index:
-            with self.index().reader() as spelling_reader:
-                with self.index().writer() as spelling_writer:
-                    for word, terminfo in document_index.iter_field(fieldname):
-                        try:
-                            terminfo = spelling_reader.term_info(fieldname, word)
-                        except TermNotFound:
-                            self.add_word(word, spelling_writer)
-        """
-        
-    def add_words(self, words):
-        with self.index().reader() as spelling_reader:
-            # with AsyncWriter(self.index()) as spelling_writer:
-            # deliberately don't use "with", so we control the commit mergetype
-            spelling_writer = AsyncWriter(self.index())
-
-            for word in words:
-                try:
-                    spelling_reader.term_info('word', word)
-                except TermNotFound:
-                    self.add_word(word, spelling_writer)
-
-            # import pdb; pdb.set_trace()
-            spelling_writer.commit(mergetype=CUSTOM_MERGE_SMALL)   
-            # spelling_writer.close()  
-
-    def add_word(self, word, writer):
-        fields = {"word": word}
-        for size in xrange(self.mingram, self.maxgram + 1):
-            nga = analysis.NgramAnalyzer(size)
-            gramlist = [t.text for t in nga(word)]
-            if len(gramlist) > 0:
-                fields["start%s" % size] = gramlist[0]
-                fields["end%s" % size] = gramlist[-1]
-                fields["gram%s" % size] = " ".join(gramlist)
-        # import pdb; pdb.set_trace()
-        writer.add_document(**fields)
 
 class WriterWithFasterSpellingUpdate(AsyncWriter):
     def __init__(self, spelling_storage, spelling_checker, spelling_fields,
@@ -228,10 +79,6 @@ class CustomWhooshBackend(original_backend.WhooshSearchBackend):
         return WriterWithFasterSpellingUpdate(self.storage, 
             self.get_spell_checker(), self.spelling_fields, index)
     
-    def get_spell_checker(self):
-        return SpellCheckerWithIncrementalUpdates(self.storage,
-            self.index.reader(), self.spelling_fields, mingram=2)
-
     """
     def update(self, index, iterable, commit=True):
         import pdb; pdb.set_trace();
@@ -331,3 +178,218 @@ class CustomWhooshSearchQuery(original_backend.WhooshSearchQuery):
 class CustomWhooshEngine(BaseEngine):
     backend = CustomWhooshBackend
     query = CustomWhooshSearchQuery
+
+class FixedWhooshSearchBackend(CustomWhooshBackend):
+    # Whoosh does actually support ordering by multiple fields. What it doesn't
+    # support is reverse ordering on some fields but not all of them.
+    #
+    # It also supports facets, so add support for them here.
+
+    def search(self, query_string, sort_by=None, start_offset=0, end_offset=None,
+               fields='', highlight=False, facets=None, date_facets=None, query_facets=None,
+               narrow_queries=None, spelling_query=None, within=None,
+               dwithin=None, distance_point=None, models=None,
+               limit_to_registered_models=None, result_class=None, **kwargs):
+        if not self.setup_complete:
+            self.setup()
+
+        # A zero length query should return no results.
+        if len(query_string) == 0:
+            return {
+                'results': [],
+                'hits': 0,
+            }
+
+        try:
+            from django.utils.encoding import force_text
+        except ImportError:
+            from django.utils.encoding import force_unicode as force_text
+
+        query_string = force_text(query_string)
+
+        # A one-character query (non-wildcard) gets nabbed by a stopwords
+        # filter and should yield zero results.
+        if len(query_string) <= 1 and query_string != u'*':
+            return {
+                'results': [],
+                'hits': 0,
+            }
+
+        reverse = False
+
+        if sort_by is not None:
+            # Determine if we need to reverse the results and if Whoosh can
+            # handle what it's being asked to sort by. Reversing is an
+            # all-or-nothing action, unfortunately.
+            sort_by_list = []
+            reverse_counter = 0
+
+            for order_by in sort_by:
+                if order_by.startswith('-'):
+                    reverse_counter += 1
+
+            if reverse_counter != 0 and reverse_counter != len(sort_by):
+                raise SearchBackendError("Whoosh does not handle reverse sorting "
+                    "by some fields and not others.")
+
+            for order_by in sort_by:
+                if order_by.startswith('-'):
+                    sort_by_list.append(order_by[1:])
+                else:
+                    sort_by_list.append(order_by)
+
+            sort_by = sort_by_list
+            reverse = (reverse_counter > 0)
+
+        if date_facets is not None:
+            warnings.warn("Whoosh does not handle date faceting.", Warning, stacklevel=2)
+
+        if query_facets is not None:
+            warnings.warn("Whoosh does not handle query faceting.", Warning, stacklevel=2)
+
+        narrowed_results = None
+        self.index = self.index.refresh()
+
+        if limit_to_registered_models is None:
+            from django.conf import settings
+            limit_to_registered_models = getattr(settings, 'HAYSTACK_LIMIT_TO_REGISTERED_MODELS', True)
+
+        if models and len(models):
+            model_choices = sorted(['%s.%s' % (model._meta.app_label, model._meta.module_name) for model in models])
+        elif limit_to_registered_models:
+            # Using narrow queries, limit the results to only models handled
+            # with the current routers.
+            model_choices = self.build_models_list()
+        else:
+            model_choices = []
+
+        if len(model_choices) > 0:
+            if narrow_queries is None:
+                narrow_queries = set()
+
+            from haystack.constants import ID, DJANGO_CT, DJANGO_ID
+            narrow_queries.add(' OR '.join(['%s:%s' % (DJANGO_CT, rm) for rm in model_choices]))
+
+        narrow_searcher = None
+
+        if narrow_queries is not None:
+            # Potentially expensive? I don't see another way to do it in Whoosh...
+            narrow_searcher = self.index.searcher()
+
+            for nq in narrow_queries:
+                recent_narrowed_results = narrow_searcher.search(self.parser.parse(force_text(nq)))
+
+                if len(recent_narrowed_results) <= 0:
+                    return {
+                        'results': [],
+                        'hits': 0,
+                    }
+
+                if narrowed_results:
+                    narrowed_results.filter(recent_narrowed_results)
+                else:
+                   narrowed_results = recent_narrowed_results
+
+        self.index = self.index.refresh()
+
+        if self.index.doc_count():
+            searcher = self.index.searcher()
+            parsed_query = self.parser.parse(query_string)
+
+            # In the event of an invalid/stopworded query, recover gracefully.
+            if parsed_query is None:
+                return {
+                    'results': [],
+                    'hits': 0,
+                }
+
+            page_num, page_length = self.calculate_page(start_offset, end_offset)
+
+            search_kwargs = {
+                'pagelen': page_length,
+                'sortedby': sort_by,
+                'reverse': reverse,
+            }
+
+            if facets is not None:
+                search_kwargs['groupedby'] = []
+                for facet_fieldname, extra_options in facets.items():
+                    search_kwargs['groupedby'].append(facet_fieldname)
+
+            # Handle the case where the results have been narrowed.
+            if narrowed_results is not None:
+                search_kwargs['filter'] = narrowed_results
+
+            try:
+                raw_page = searcher.search_page(
+                    parsed_query,
+                    page_num,
+                    **search_kwargs
+                )
+            except ValueError:
+                if not self.silently_fail:
+                    raise
+
+                return {
+                    'results': [],
+                    'hits': 0,
+                    'spelling_suggestion': None,
+                }
+
+            # Because as of Whoosh 2.5.1, it will return the wrong page of
+            # results if you request something too high. :(
+            if raw_page.pagenum < page_num:
+                return {
+                    'results': [],
+                    'hits': 0,
+                    'spelling_suggestion': None,
+                }
+
+            results = self._process_results(raw_page, highlight=highlight, query_string=query_string, spelling_query=spelling_query, result_class=result_class, facets=facets)
+            searcher.close()
+
+            if hasattr(narrow_searcher, 'close'):
+                narrow_searcher.close()
+
+            return results
+        else:
+            if self.include_spelling:
+                if spelling_query:
+                    spelling_suggestion = self.create_spelling_suggestion(spelling_query)
+                else:
+                    spelling_suggestion = self.create_spelling_suggestion(query_string)
+            else:
+                spelling_suggestion = None
+
+            return {
+                'results': [],
+                'hits': 0,
+                'spelling_suggestion': spelling_suggestion,
+            }
+
+    def _process_results(self, raw_page, highlight=False, query_string='',
+        spelling_query=None, result_class=None, facets=None):
+
+        results = super(FixedWhooshSearchBackend, self)._process_results(raw_page,
+            highlight, query_string, spelling_query, result_class)
+
+        facets_out = {
+            'fields': {},
+            'dates': {},
+            'queries': {},
+        }
+
+        for facet_fieldname, extra_options in facets.items():
+            facet_results = raw_page.results.groups(facet_fieldname)
+            facet_term_counts = []
+            for term, term_results in facet_results.iteritems():
+                facet_term_counts.append((term, len(term_results)))
+            facets_out['fields'][facet_fieldname] = facet_term_counts
+
+        results['facets'] = facets_out
+        return results
+
+class FixedWhooshEngine(BaseEngine):
+    backend = FixedWhooshSearchBackend
+    query = CustomWhooshSearchQuery
+

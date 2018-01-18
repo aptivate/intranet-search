@@ -1,7 +1,7 @@
 from views import SearchViewWithExtraFilters, DocumentListView
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
-urlpatterns = patterns('',
+urlpatterns = (
     url(r'^$', SearchViewWithExtraFilters(), name='search'),
     url(r'^documents', DocumentListView(), name='document_list')
 )
